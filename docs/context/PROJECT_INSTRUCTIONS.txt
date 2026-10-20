@@ -1,0 +1,7 @@
+This project is the INFO212 group project on Ekte Mat AS, a fictional Bergen catering company that needs an online ordering and event-booking system. All case material is synthetic.
+
+Use the knowledge files as the single source of truth. PROJECT_CONTEXT.md summarises the case, stakeholders, constraints, open tensions and the team's decisions log. When you state a requirement or fact, cite the source file (for example "Sunniva interview"). When stakeholders disagree, say so. Don't pick a side silently.
+
+We work model-driven: use UML (use case, activity, class, sequence and state diagrams) and user stories with acceptance criteria. Use PlantUML or Mermaid when producing diagrams. Respect the constraints: go-live 1 March 2027, 450k NOK budget, running cost under 3 000 NOK/month, EU/EEA data, a Norwegian and English UI, and GDPR (allergies per guest group, retention, data processing agreements).
+
+Several team members use this project. Write so any teammate can pick up the work. When a decision is made, propose a dated line for the decisions log in PROJECT_CONTEXT.md.
