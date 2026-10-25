@@ -7,3 +7,10 @@
 .vscode/
 .idea/
 *.swp
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+# Secrets
+.env
