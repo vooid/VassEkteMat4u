@@ -1,0 +1,52 @@
+Work description:
+
+Functional requirements: 
+1. Admin-side
+	- Food items. The application should have interface to add/edit the following datafields:
+		- name,
+		- description, 
+		- prize in NOK,
+		- minimum order quantity,
+		- event categories (not sure what this means) and
+		- whether or not this food carry any implications for the most common diets out there. 
+	- Event-type:
+		- A presentation of different type of events.
+		- An interface to change the lower limit of the event.
+	- Images. The adim-side should have capabilites to upload one or more images of the food staple, and the admin should be able to review the image before saving/publishing the image to the public
+	- Orders. The app should be able to maintain a list of all orders. We should be able to:
+		- filter list of orders by status and event date,
+		- a page per order to manage the selected order,
+		- each order should have a status (to identify the following cases: submitted, approved, in prepreration, delivered, rejected/cancelled), payment status (e.g. not paid, deposit paid, invoiced, paid)
+		- An order should be allowed if order number is higher than the current limit set event-type. This should enable orders to be valid even if this limit is changed after the order has been placed. 
+		- A reminder should go out til the customer at 7 days until evnet with reminder to update- or cancel event before the 5-day limit on order alterations. 
+	- Questions:
+		- read and answer customers questions about their order.
+2. Customer side
+	- Menu by event: 
+		- Food items as cards (menus) grouped by kind of event (birthday, confirmation, wedding, conference, christmas party, etc.) Lower limit should be drawn from the current limit set on the event-type. 
+	 	- Each card/menu must contain a image, a prize, minimum orders, allergens and diet implications
+	- A shopping cart:
+		- Add, change (number of), and total cost. (orders below minimum order limit should be rejected)
+		- Order. A login/register section:
+			- The user shall have a login section. A login must create a user, witch log order, order history, payments tracking, with all the usual nuts and bolts regarding login (simple login will do in this intance), password setting, retrival reset. Base login on a unique email-address. Payment-solution is not required at this time, but payment option should be a selectable field on the order. 
+			- In addition user should be able to carry out actions related to the primary use of this application. 
+				- Submit order
+				- event date
+				- number of guests
+				- delivery address
+				- allergy limitations
+				- dietary limitations
+				- notes on delivery
+			- All orders should be accessible for the user (current and historical). Historical orders should be immutable. 
+			- An order could be cancelled up until 5 days before event.
+			- Submit a questions about a selected order which is forwarded to Ekte Mat (to be answered)
+			
+			
+model prompt:
+Using 'basic_desc_txt' create the following models: 
+	1. User journey prosess from start to finish, with a change in order
+	2. Admin side - follow a order shifting between the different lanes.
+Regarding payment instructions. All orders should have a field where payment options is selected. 
+Regarding the lower-limit to the different menus/events set some arbitrary limits your self - but limit upward to 265 pax. 
+
+Use color-coded flowchart as output, and output to scv or png file. 
