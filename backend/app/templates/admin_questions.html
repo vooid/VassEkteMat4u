@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}{{ t("unanswered_questions") }} – Ekte Mat{% endblock %}
+{% block content %}
+<h1>{{ t("unanswered_questions") }}</h1>
+{% for q in rows %}
+<article class="panel question">
+  <p class="hint">{{ t("asked_at", at=format_datetime(q.created_at)) }} · {{ q.customer.name }} ({{ q.customer.email }})
+    · {{ t("order_heading", id=q.order_id) }}, {{ tr(q.event_type, "name") }} {{ format_date(q.event_date) }}
+    · <span class="status status-{{ q.status }}">{{ t("status_" ~ q.status) }}</span></p>
+  <p class="pre">{{ q.text }}</p>
+  <a class="button" href="{{ url_for('admin.order_detail', order_id=q.order_id, _anchor='questions') }}">{{ t("answer_on_order") }}</a>
+</article>
+{% else %}
+<p class="empty">{{ t("no_unanswered") }}</p>
+{% endfor %}
+{% endblock %}

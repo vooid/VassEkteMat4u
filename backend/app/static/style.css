@@ -19,11 +19,11 @@ body { margin: 0; background: var(--bg); line-height: 1.5; }
 a { color: var(--green); }
 
 .site-header {
-  display: flex; align-items: center; gap: 16px;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px;
   padding: 12px 24px; background: var(--green); color: #fff;
 }
-.brand { color: #fff; font-weight: 700; font-size: 1.3rem; text-decoration: none; letter-spacing: .02em; }
-.header-nav { flex: 1; display: flex; gap: 16px; }
+.brand { white-space: nowrap; color: #fff; font-weight: 700; font-size: 1.3rem; text-decoration: none; letter-spacing: .02em; }
+.header-nav { flex: 1; display: flex; flex-wrap: wrap; gap: 4px 16px; }
 .header-nav a { color: #fff; text-decoration: none; }
 .lang-switch button {
   background: transparent; color: #fff; border: 1px solid rgba(255,255,255,.6);
@@ -141,8 +141,8 @@ input[type=number] { font: inherit; width: 6em; padding: 5px 8px; border: 1px so
 .flash ul { margin: 0; padding-left: 20px; }
 a.button { display: inline-block; padding: 6px 14px; border-radius: 8px; background: var(--green); color: #fff; text-decoration: none; }
 
-@media (max-width: 600px) {
-  .site-header { flex-wrap: wrap; row-gap: 8px; }
+/* Narrow screens, and the admin's longer menu on a tablet: links on their own row. */
+@media (max-width: 900px) {
   .header-nav { order: 3; flex-basis: 100%; }
   .account-nav { margin-left: auto; }
 }
@@ -195,3 +195,29 @@ button.secondary { background: #fff; color: var(--green); }
   .facts dd { margin-bottom: 8px; }
   .account-nav .who { display: none; }
 }
+
+/* Questions (US-12, US-26) */
+.question { border-top: 1px solid var(--border); padding-top: 8px; margin-top: 8px; }
+.question p { margin: 4px 0; }
+.answer { border-left: 3px solid var(--green); padding-left: 12px; margin: 8px 0; }
+.questions textarea, .stack textarea { font: inherit; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; }
+.stack select { font: inherit; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; background: #fff; }
+
+/* Kitchen and driver screens: tablet and phone, big text and buttons */
+.screen { max-width: 800px; font-size: 1.1rem; }
+.day-nav { display: flex; gap: 16px; flex-wrap: wrap; margin: 8px 0; }
+.screen-order h2 { font-size: 1.3rem; }
+.screen-order h3 { margin: 12px 0 4px; font-size: 1.1rem; }
+.screen-order.done { opacity: .7; }
+.dish-list li { font-size: 1.15rem; }
+.allergy-list li { margin: 4px 0; }
+.allergy { display: inline-block; background: #fdecea; color: var(--danger); border: 1px solid #f0b4ae; font-weight: 700;
+           border-radius: 999px; padding: 0 10px; margin: 2px 4px 2px 0; }
+.diet { display: inline-block; background: var(--green-soft); color: var(--green); border-radius: 999px; padding: 0 10px; margin: 2px 4px 2px 0; }
+.big-button { font-size: 1.15rem; padding: 12px 24px; min-height: 48px; }
+.seen { color: var(--green); font-weight: 700; }
+.address { font-size: 1.2rem; font-weight: 600; }
+.screen-links { display: flex; gap: 12px; flex-wrap: wrap; }
+.screen-links .button { padding: 10px 18px; }
+a.secondary-link { background: var(--surface); color: var(--green); border: 1px solid var(--green); }
+.screen-order .time { background: var(--green); color: #fff; border-radius: 6px; padding: 0 8px; margin-right: 4px; }

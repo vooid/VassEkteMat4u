@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}{{ t("driver") }} – Ekte Mat{% endblock %}
+{% block content %}
+<div class="screen">
+<h1>{{ t("driver_heading", date=day) }}</h1>
+{% include "_day_nav.html" %}
+
+{% for o in rows %}
+<article class="panel screen-order{% if o.delivered %} done{% endif %}">
+  <h2>{% if o.event_time %}<span class="time">{{ o.event_time }}</span> {% endif %}{{ tr(o.event_type, "name") }} · {{ t("guests_n", n=o.guests) }} <span class="hint">#{{ o.id }}</span></h2>
+  <p class="pre address">{{ o.delivery_address }}</p>
+  <p class="screen-links">
+    <a class="button" href="https://www.google.com/maps/search/?api=1&query={{ o.delivery_address | urlencode }}"
+       target="_blank" rel="noopener">{{ t("open_map") }}</a>
+    {% if o.customer.phone %}<a class="button secondary-link" href="tel:{{ o.customer.phone }}">{{ t("call", phone=o.customer.phone) }}</a>{% endif %}
+  </p>
+  <p>{{ o.customer.name }}</p>
+  {% if o.delivery_notes %}<p class="pre">{{ t("delivery_notes") }}: {{ o.delivery_notes }}</p>{% endif %}
+  {% if o.delivered %}
+  <p class="seen">✓ {{ t("delivered_by", by=o.delivered.by, at=format_datetime(o.delivered.at)) }}</p>
+  {% else %}
+  <form method="post" action="{{ url_for('driver.delivered', order_id=o.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="day" value="{{ day.isoformat() }}">
+    <button type="submit" class="big-button">{{ t("mark_delivered") }}</button>
+  </form>
+  {% endif %}
+</article>
+{% else %}
+<p class="empty">{{ t("driver_empty") }}</p>
+{% endfor %}
+</div>
+{% endblock %}

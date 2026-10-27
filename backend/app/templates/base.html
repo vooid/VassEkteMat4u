@@ -5,18 +5,23 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}{{ t("site_title") }}{% endblock %}</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  {% block head %}{% endblock %}
 </head>
 <body>
   <header class="site-header">
     <a class="brand" href="{{ url_for('menu.index') }}">Ekte Mat</a>
     <nav class="header-nav">
-      <a href="{{ url_for('menu.index') }}">{{ t("menu_heading") }}</a>
       {% if current_user.is_authenticated and current_user.is_staff %}
         {% if current_user.role == "admin" %}
         <a href="{{ url_for('admin.order_list') }}">{{ t("admin_orders") }}</a>
+        <a href="{{ url_for('admin.question_list') }}">{{ t("questions") }}</a>
         <a href="{{ url_for('admin.event_type_list') }}">{{ t("event_types") }}</a>
+        <a href="{{ url_for('admin.device_list') }}">{{ t("devices") }}</a>
         {% endif %}
+        {% if current_user.role in ("admin", "kitchen") %}<a href="{{ url_for('kitchen.index') }}">{{ t("kitchen") }}</a>{% endif %}
+        {% if current_user.role in ("admin", "driver") %}<a href="{{ url_for('driver.index') }}">{{ t("driver") }}</a>{% endif %}
       {% else %}
+      <a href="{{ url_for('menu.index') }}">{{ t("menu_heading") }}</a>
       <a href="{{ url_for('cart.view') }}" class="cart-link">{{ t("cart") }}{% if cart_count %} <span class="badge">{{ cart_count }}</span>{% endif %}</a>
       {% endif %}
     </nav>

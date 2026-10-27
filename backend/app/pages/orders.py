@@ -1,12 +1,13 @@
-"""Checkout (US-07), the customer's orders (US-08), changing (US-09) and cancelling (US-10)."""
+"""Checkout (US-07), the customer's orders (US-08), changing (US-09), cancelling (US-10) and questions (US-12)."""
 from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
 from flask_login import current_user
 from werkzeug.datastructures import MultiDict
 
 from .. import cart, mail, orders
 from ..auth import customer_required
-from ..i18n import format_date, t, t_in, tr
+from ..i18n import format_date, format_event, t, t_in, tr
 from ..repositories import orders as orders_repo
+from ..repositories import questions
 from .cart import load as load_cart
 
 bp = Blueprint("orders", __name__)
@@ -40,6 +41,7 @@ def checkout():
     return render_template("checkout.html", event_type=event_type, guests=c["guests"], lines=lines,
                            total=cart.total(lines), allergens=allergens, diets=diets, values=values,
                            errors=errors, earliest=orders.earliest_event_date(), latest=orders.latest_event_date(),
+                           earliest_time=orders.EARLIEST_EVENT_TIME, latest_time=orders.LATEST_EVENT_TIME,
                            lock_days=orders.LOCK_DAYS, group_rows=orders.GUEST_GROUP_ROWS,
                            payment_options=orders.PAYMENT_OPTIONS,
                            more_groups_open=any(v for k, v in values.items(multi=True)
@@ -49,7 +51,7 @@ def checkout():
 
 def _send_confirmation(created: dict, event_type: dict, guests: int, details: dict) -> None:
     body = t("confirmation_body", name=current_user.name, id=created["id"], event=tr(event_type, "name"),
-             date=format_date(details["event_date"]), guests=guests, total=created["total_nok"],
+             date=format_event(details["event_date"], details["event_time"]), guests=guests, total=created["total_nok"],
              url=url_for("orders.detail", order_id=created["id"], _external=True))
     mail.send(current_user.email, t("confirmation_subject", id=created["id"]), body)
 
@@ -68,6 +70,8 @@ def detail(order_id: str):
     if order is None:
         abort(404)
     return render_template("order.html", order=order, read_only=order["status"] in orders.PAST_STATUSES,
+                           questions=questions.for_order(order_id, current_user.email),
+                           max_question=orders.MAX_QUESTION_LENGTH,
                            can_change=orders.customer_can_change(order),
                            last_change_date=orders.last_change_date(order["event_date"]), lock_days=orders.LOCK_DAYS)
 
@@ -109,12 +113,14 @@ def change(order_id: str):
     else:
         values = orders.groups_as_form(order["groups"])
         values.add("guests", str(order["guests"]))
+        values.add("event_time", order.get("event_time") or "")
         values.add("delivery_notes", order.get("delivery_notes") or "")
         for line in order["lines"]:
             values.add(f"qty-{line['id']}", str(line["quantity"]))
     for dish in dishes:
         dish["minimum"] = max(order["min_guests_at_order"], dish.get("min_order_qty") or 0)
     return render_template("order_change.html", order=order, dishes=dishes, allergens=allergens, diets=diets,
+                           earliest_time=orders.EARLIEST_EVENT_TIME, latest_time=orders.LATEST_EVENT_TIME,
                            values=values, errors=errors, group_rows=orders.GUEST_GROUP_ROWS,
                            more_groups_open=any(v for k, v in values.items(multi=True)
                                                 if k.startswith("group-") and not k.startswith("group-1-")),
@@ -141,6 +147,25 @@ def cancel(order_id: str):
                 url=url_for("orders.detail", order_id=order_id, _external=True)))
     flash(t("order_cancelled", id=order_id), "success")
     return redirect(url_for("orders.detail", order_id=order_id))
+
+
+@bp.post("/orders/<order_id>/questions")
+@customer_required
+def ask(order_id: str):
+    """US-12: a question about the order, on any status. The admins get an e-mail."""
+    order = orders_repo.get_for_customer(current_user.email, order_id)
+    if order is None:
+        abort(404)
+    text = request.form.get("text", "").strip()
+    error = orders.question_error(text)
+    if error:
+        flash(t(error, max=orders.MAX_QUESTION_LENGTH), "error")
+    elif questions.ask(current_user.email, order_id, text) is None:
+        abort(404)
+    else:
+        _notify_admins("mail_admin_question", order, text=text)
+        flash(t("question_sent"), "success")
+    return redirect(url_for("orders.detail", order_id=order_id, _anchor="questions"))
 
 
 def _notify_admins(key: str, order: dict, **kwargs) -> None:

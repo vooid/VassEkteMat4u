@@ -1,11 +1,13 @@
-"""Admin pages: orders (US-21 – US-25) and event-type minimums (US-20). Staff with role "admin" only."""
-from flask import Blueprint, abort, current_app, flash, redirect, render_template, request, url_for
+"""Admin pages: orders (US-21 – US-25), answering questions (US-26) and event-type minimums (US-20).
+Staff with role "admin" only."""
+from flask import Blueprint, abort, current_app, flash, make_response, redirect, render_template, request, url_for
 from flask_login import current_user
 
-from .. import mail, orders
+from .. import auth, mail, orders
 from ..auth import staff_required
 from ..i18n import format_date, t, t_in
-from ..repositories import event_types
+from ..repositories import devices, event_types, questions
+from ..repositories import kitchen as kitchen_repo
 from ..repositories import orders as orders_repo
 
 bp = Blueprint("admin", __name__, url_prefix="/admin")
@@ -50,7 +52,8 @@ def order_detail(order_id: str):
                            payment_actions=orders.payment_actions(order),
                            capacity=orders.capacity(booked, wedding, order),
                            locked=orders.is_locked(order["event_date"]), lock_days=orders.LOCK_DAYS,
-                           staff_view=True)
+                           questions=questions.for_order(order_id), max_question=orders.MAX_QUESTION_LENGTH,
+                           allergies_seen=kitchen_repo.allergies_seen(order_id), staff_view=True)
 
 
 @bp.post("/orders/<order_id>/status")
@@ -93,6 +96,71 @@ def change_payment(order_id: str):
     else:
         flash(t("payment_changed", status=t("payment_" + to_status)), "success")
     return redirect(url_for("admin.order_detail", order_id=order_id))
+
+
+@bp.get("/questions")
+@admin_only
+def question_list():
+    return render_template("admin_questions.html", rows=questions.unanswered())
+
+
+@bp.post("/orders/<order_id>/questions/<question_id>/answer")
+@admin_only
+def answer(order_id: str, question_id: str):
+    text = request.form.get("text", "").strip()
+    error = orders.question_error(text)
+    if error:
+        flash(t(error, max=orders.MAX_QUESTION_LENGTH), "error")
+    else:
+        result = questions.answer(order_id, question_id, current_user.email, text)
+        if result is None:
+            flash(t("already_answered"), "error")
+        else:
+            _send_answer(result["order"], result["customer"], result["question"], text)
+            flash(t("answer_sent"), "success")
+    return redirect(url_for("admin.order_detail", order_id=order_id, _anchor="questions"))
+
+
+def _send_answer(order: dict, customer: dict, question: str, text: str) -> None:
+    """US-26: the answer goes to the customer by e-mail, in their language."""
+    lang = customer.get("language")
+    event = order["event_type"].get(f"name_{lang}") or order["event_type"]["name_no"]
+    body = t_in(lang, "mail_answer_body", name=customer["name"], id=order["id"], event=event,
+                date=format_date(order["event_date"], lang), question=question, answer=text,
+                url=url_for("orders.detail", order_id=order["id"], _external=True))
+    mail.send(customer["email"], t_in(lang, "mail_answer_subject", id=order["id"]), body)
+
+
+@bp.get("/devices")
+@admin_only
+def device_list():
+    return render_template("admin_devices.html", devices=devices.list_all(), this_device=auth.pin_device())
+
+
+@bp.post("/devices")
+@admin_only
+def approve_device():
+    """Approve the device the admin is using now, e.g. the kitchen tablet, for PIN login."""
+    name = request.form.get("name", "").strip()
+    if not name or len(name) > 60:
+        flash(t("device_name_required"), "error")
+        return redirect(url_for("admin.device_list"))
+    token, token_hash = auth.new_device_token()
+    devices.approve(name, token_hash, current_user.email)
+    flash(t("device_approved", name=name), "success")
+    response = make_response(redirect(url_for("admin.device_list")))
+    response.set_cookie(auth.PIN_DEVICE_COOKIE, token, max_age=auth.PIN_DEVICE_DAYS * 24 * 3600, httponly=True,
+                        samesite="Lax", secure=current_app.config["SESSION_COOKIE_SECURE"])
+    return response
+
+
+@bp.post("/devices/<device_id>/revoke")
+@admin_only
+def revoke_device(device_id: str):
+    if not devices.revoke(device_id):
+        abort(404)
+    flash(t("device_revoked"), "success")
+    return redirect(url_for("admin.device_list"))
 
 
 @bp.get("/event-types")

@@ -1,0 +1,38 @@
+{# Questions about one order (US-12) and Ekte Mat's answers (US-26). staff_view: answer forms instead of the ask form. #}
+<section class="panel questions" id="questions">
+  <h2>{{ t("questions") }}</h2>
+  {% for q in questions %}
+  <article class="question">
+    <p class="hint">{{ t("asked_at", at=format_datetime(q.created_at)) }}</p>
+    <p class="pre">{{ q.text }}</p>
+    {% if q.answer %}
+    <div class="answer">
+      <p class="hint">{{ t("answer_from", by=q.answer.by, at=format_datetime(q.answer.created_at)) }}</p>
+      <p class="pre">{{ q.answer.text }}</p>
+    </div>
+    {% elif staff_view %}
+    <form method="post" action="{{ url_for('admin.answer', order_id=order.id, question_id=q.id) }}" class="stack">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <label for="answer-{{ q.id }}">{{ t("your_answer") }}</label>
+      <textarea id="answer-{{ q.id }}" name="text" rows="3" required maxlength="{{ max_question }}"></textarea>
+      <button type="submit">{{ t("send_answer") }}</button>
+    </form>
+    {% else %}
+    <p class="pill">{{ t("awaiting_answer") }}</p>
+    {% endif %}
+  </article>
+  {% else %}
+  <p class="hint">{{ t("no_questions") }}</p>
+  {% endfor %}
+
+  {% if not staff_view %}
+  <form method="post" action="{{ url_for('orders.ask', order_id=order.id) }}" class="stack">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label for="question-text">{{ t("ask_question") }}</label>
+    <textarea id="question-text" name="text" rows="3" required maxlength="{{ max_question }}"
+              aria-describedby="question-hint"></textarea>
+    <p class="hint" id="question-hint">{{ t("ask_question_hint") }}</p>
+    <button type="submit">{{ t("send_question") }}</button>
+  </form>
+  {% endif %}
+</section>
