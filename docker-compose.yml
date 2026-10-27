@@ -1,0 +1,15 @@
+# Local Neo4j for development. Start from the repo root with:
+#   docker compose --env-file backend/.env up -d
+# so the password matches the one the backend uses (NEO4J_USER / NEO4J_PASSWORD in backend/.env).
+services:
+  neo4j:
+    image: neo4j:5.26-community
+    ports:
+      - "7474:7474"   # browser UI: http://localhost:7474
+      - "7687:7687"   # bolt (used by the backend)
+    environment:
+      NEO4J_AUTH: ${NEO4J_USER:-neo4j}/${NEO4J_PASSWORD:-change-me-local-only}
+    volumes:
+      - neo4j-data:/data
+volumes:
+  neo4j-data:

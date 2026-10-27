@@ -18,6 +18,8 @@ event-booking system.
 | [`docs/requirements/`](docs/requirements/) | User stories with acceptance criteria |
 | [`docs/diagrams/`](docs/diagrams/) | UML diagrams as PlantUML/Mermaid source |
 | [`docs/decisions.md`](docs/decisions.md) | Dated decisions log |
+| [`backend/`](backend/) | Flask + Neo4j API skeleton (see its README to run it) |
+| `docker-compose.yml` | Local Neo4j for development |
 
 ## Key facts
 | Topic | Fact | Source |
