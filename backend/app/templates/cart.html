@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block title %}{{ t("cart") }} – Ekte Mat{% endblock %}
+{% block content %}
+<h1>{{ t("cart") }}</h1>
+
+{% if not lines %}
+  <p class="empty">{{ t("cart_empty") }}</p>
+  <p><a href="{{ url_for('menu.index') }}">{{ t("back_to_menu") }}</a></p>
+{% else %}
+  <p class="lead">{{ t("cart_for_event", event=tr(event_type, "name")) }}
+    <span class="pill">{{ t("min_guests", n=event_type.min_guests) }}</span></p>
+
+  <form id="cart-form" method="post" action="{{ url_for('cart.update') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="field">
+      <label for="guests">{{ t("number_of_guests") }}</label>
+      <input id="guests" name="guests" type="number" inputmode="numeric" min="1" max="9999"
+             value="{{ cart.guests or '' }}">
+    </div>
+
+    <table class="cart-table">
+      <thead>
+        <tr>
+          <th scope="col">{{ t("dish") }}</th>
+          <th scope="col" class="num col-price">{{ t("price") }}</th>
+          <th scope="col" class="num">{{ t("portions") }}</th>
+          <th scope="col" class="num">{{ t("line_total") }}</th>
+          <th scope="col"><span class="visually-hidden">{{ t("remove") }}</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for line in lines %}
+        <tr class="{{ 'below-min' if line.quantity < line.minimum }}">
+          <td>
+            {{ tr(line, "name") }}
+            <div class="hint">{{ t("minimum_order", n=line.minimum) }}</div>
+          </td>
+          <td class="num col-price">{{ line.price_nok }}</td>
+          <td class="num">
+            <label class="visually-hidden" for="qty-{{ line.id }}">{{ t("portions") }}: {{ tr(line, "name") }}</label>
+            <input id="qty-{{ line.id }}" name="qty-{{ line.id }}" type="number" inputmode="numeric"
+                   min="1" max="9999" value="{{ line.quantity }}">
+          </td>
+          <td class="num">{{ line.line_total }}</td>
+          <td>
+            <button type="submit" form="remove-{{ line.id }}" class="link-button">{{ t("remove") }}</button>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr>
+          <th scope="row">{{ t("total") }}</th>
+          <td class="col-price"></td>
+          <td></td>
+          <td class="num total">{{ total }} kr</td>
+          <td></td>
+        </tr>
+      </tfoot>
+    </table>
+    <button type="submit">{{ t("update_cart") }}</button>
+  </form>
+
+  {% for line in lines %}
+  <form id="remove-{{ line.id }}" method="post" action="{{ url_for('cart.remove', dish_id=line.id) }}" hidden>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  </form>
+  {% endfor %}
+
+  <section class="check" aria-live="polite">
+    {% if problems %}
+      <h2>{{ t("cannot_order_yet") }}</h2>
+      <ul class="problems">
+        {% for key, args in problems %}
+          {% if key == "dish_below_minimum" %}
+            {% set line = lines | selectattr("id", "equalto", args.dish_id) | first %}
+            <li>{{ t(key, dish=tr(line, "name"), n=args.n) }}</li>
+          {% else %}
+            <li>{{ t(key, **args) }}</li>
+          {% endif %}
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="ok">{{ t("cart_ok") }}</p>
+    {% endif %}
+    <button type="button" disabled title="{{ t('order_coming') }}">{{ t("continue_to_order") }}</button>
+    <p class="hint">{{ t("order_coming") }}</p>
+  </section>
+
+  <form method="post" action="{{ url_for('cart.clear') }}" class="clear-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button type="submit" class="link-button">{{ t("clear_cart") }}</button>
+  </form>
+{% endif %}
+{% endblock %}

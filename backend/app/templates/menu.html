@@ -42,6 +42,15 @@
             {{ t("no_allergens") }}
           {% endif %}
         </p>
+        <form class="add-form" method="post" action="{{ url_for('cart.add') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="event_type" value="{{ e.id }}">
+          <input type="hidden" name="dish" value="{{ item.id }}">
+          <label for="qty-{{ e.id }}-{{ item.id }}">{{ t("portions") }}</label>
+          <input id="qty-{{ e.id }}-{{ item.id }}" name="quantity" type="number" inputmode="numeric"
+                 min="1" max="9999" value="{{ item.minimum }}" required>
+          <button type="submit">{{ t("add_to_cart") }}</button>
+        </form>
       </div>
     </li>
     {% endfor %}
