@@ -13,6 +13,18 @@
       <a href="{{ url_for('menu.index') }}">{{ t("menu_heading") }}</a>
       <a href="{{ url_for('cart.view') }}" class="cart-link">{{ t("cart") }}{% if cart_count %} <span class="badge">{{ cart_count }}</span>{% endif %}</a>
     </nav>
+    <div class="account-nav">
+      {% if current_user.is_authenticated %}
+        <span class="who">{{ current_user.name }}</span>
+        <form method="post" action="{{ url_for('account.logout') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="header-button">{{ t("log_out") }}</button>
+        </form>
+      {% else %}
+        <a href="{{ url_for('account.login') }}">{{ t("log_in") }}</a>
+        <a href="{{ url_for('account.register') }}">{{ t("register") }}</a>
+      {% endif %}
+    </div>
     {% set other = "en" if current_language() == "no" else "no" %}
     <form class="lang-switch" method="post" action="{{ url_for('menu.set_language', lang=other) }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

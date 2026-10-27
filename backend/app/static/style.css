@@ -122,3 +122,26 @@ input[type=number] { font: inherit; width: 6em; padding: 5px 8px; border: 1px so
   .cart-table th, .cart-table td { padding: 8px 6px; }
   .cart-table input[type=number] { width: 4.2em; }
 }
+
+/* Account links in the header */
+.account-nav { display: flex; align-items: center; gap: 12px; }
+.account-nav a, .account-nav .who { color: #fff; text-decoration: none; }
+.account-nav .who { opacity: .85; }
+.account-nav form { margin: 0; }
+.header-button { background: transparent; border: none; color: #fff; padding: 0; text-decoration: underline; }
+
+/* Forms */
+.form-page { max-width: 420px; }
+.stack { display: flex; flex-direction: column; gap: 6px; margin: 16px 0; }
+.stack label { font-weight: 600; margin-top: 8px; }
+.stack input { font: inherit; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; background: #fff; }
+.stack button { margin-top: 16px; align-self: flex-start; }
+.stack .hint { margin: 0; }
+.flash ul { margin: 0; padding-left: 20px; }
+a.button { display: inline-block; padding: 6px 14px; border-radius: 8px; background: var(--green); color: #fff; text-decoration: none; }
+
+@media (max-width: 600px) {
+  .site-header { flex-wrap: wrap; row-gap: 8px; }
+  .header-nav { order: 3; flex-basis: 100%; }
+  .account-nav { margin-left: auto; }
+}
