@@ -6,7 +6,7 @@ No mail is sent in this version. Messages go to a development outbox: they are l
 """
 import logging
 
-from .repositories import outbox
+from .repositories import outbox, staff
 
 log = logging.getLogger(__name__)
 
@@ -18,3 +18,14 @@ def send(recipient: str, subject: str, body: str) -> None:
         outbox.add(recipient, subject, body)
     except Exception:
         log.exception("Could not store e-mail in the outbox")
+
+
+def send_to_admins(subject: str, body: str) -> None:
+    """Send to every staff member with role admin. Never raises, like send()."""
+    try:
+        recipients = staff.admin_emails()
+    except Exception:
+        log.exception("Could not look up the admins")
+        return
+    for recipient in recipients:
+        send(recipient, subject, body)

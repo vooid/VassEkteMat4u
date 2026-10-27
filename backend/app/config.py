@@ -16,6 +16,8 @@ class Config:
     NEO4J_USER = os.getenv("NEO4J_USER", "neo4j")
     NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD", "")
     NEO4J_DATABASE = os.getenv("NEO4J_DATABASE", "neo4j")
+    # Address of the site, for links in e-mails sent outside a web request (the daily job).
+    SITE_URL = os.getenv("SITE_URL", "http://localhost:5001")
     # Show stored e-mails at /dev/outbox (mail.py). Development only: the page lists every customer's mail.
     DEV_OUTBOX = os.getenv("FLASK_DEBUG") == "1"
     # Upper bound for an event type's minimum guests (basic_desc.txt model prompt).

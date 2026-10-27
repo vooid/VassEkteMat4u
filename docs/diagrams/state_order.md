@@ -3,7 +3,8 @@
 UML state machine diagrams for one order. GitHub renders the Mermaid blocks below; PNG versions are in this folder
 ([order](state_order.png), [payment](state_payment.png)).
 
-Sources: [`basic_desc.txt`](../requirements/basic_desc.txt) (statuses, 5-day change/cancel limit, read-only history),
+Sources: [`basic_desc.txt`](../requirements/basic_desc.txt) (statuses, 5-day change/cancel limit, 7-day reminder,
+read-only history),
 [flowcharts](README.md#colour-coded-process-flowcharts-to-be) (admin releases the order to the kitchen after the lock),
 [decisions log](../decisions.md) 2026-10-27 (corporate accounts with approval, no deposits in this version).
 
@@ -25,6 +26,7 @@ stateDiagram-v2
     Submitted --> Submitted : customer changes [> 5 days left, guests ≥ saved min]
     Submitted --> Approved : admin approves
     Submitted --> Rejected : admin rejects / e-mail reason
+    Submitted --> Cancelled : customer cancels [> 5 days left] (assumption)
     Approved --> Approved : customer changes [> 5 days left, guests ≥ saved min] / notify admin
     Approved --> Cancelled : customer cancels [> 5 days left]
     Approved --> InPreparation : admin releases to kitchen [order locked, ≤ 5 days left]
@@ -45,6 +47,7 @@ stateDiagram-v2
 | `submitted` | `submitted` | customer (change) | > 5 days before event; guests ≥ saved minimum |
 | `submitted` | `approved` | Ekte Mat admin | – |
 | `submitted` | `rejected` | Ekte Mat admin | reason required |
+| `submitted` | `cancelled` | customer | > 5 days before event. *Assumption* (open question 1), built this way until the product owner decides |
 | `approved` | `approved` | customer (change) | > 5 days before event; guests ≥ saved minimum |
 | `approved` | `cancelled` | customer | > 5 days before event |
 | `approved` | `in_preparation` | Ekte Mat admin | order locked (≤ 5 days before event) |
@@ -78,8 +81,11 @@ affect the order status diagram. The value `deposit_paid` from `basic_desc.txt` 
 
 The diagrams show only what is decided. These gaps need an answer before the backend enforces the transitions:
 
-1. Can a customer cancel a **submitted** order before it's approved?
-2. What happens to a **submitted** order that nobody approves before the 5-day lock? (Same for orders still awaiting company approval.)
+1. Can a customer cancel a **submitted** order before it's approved? *The backend assumes yes for now (nothing has
+   been approved yet).*
+2. What happens to a **submitted** order that nobody approves before the 5-day lock? (Same for orders still awaiting
+   company approval.) *For now it is locked like any other, and the daily e-mail to the admin lists it as not approved
+   yet; the admin can still approve or reject it.*
 3. Can the **admin** cancel an approved order, and how is the customer told?
 4. Who confirms **delivery** in the system: the driver (own screen) or the admin?
 5. **Company approval limit:** fixed at 15 000 NOK (Fjordtek) or set per company? Who is the approver, and can there be more than one?

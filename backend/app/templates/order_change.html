@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}{{ t("change_order_heading", id=order.id) }} – Ekte Mat{% endblock %}
+{% block content %}
+<p><a href="{{ url_for('orders.detail', order_id=order.id) }}">← {{ t("order_heading", id=order.id) }}</a></p>
+<h1>{{ t("change_order_heading", id=order.id) }}</h1>
+<p class="hint">{{ t("change_until", date=last_change_date) }}
+  {% if order.status == "approved" %}{{ t("change_notifies_admin") }}{% endif %}</p>
+
+{% if errors %}
+<div class="flash flash-error" role="alert">
+  <ul>{% for key, args in errors %}
+    {% if key == "dish_below_minimum" %}
+      {% set dish = dishes | selectattr("id", "equalto", args.dish_id) | first %}
+      <li>{{ t(key, dish=tr(dish, "name"), n=args.n) }}</li>
+    {% else %}<li>{{ t(key, **args) }}</li>{% endif %}
+  {% endfor %}</ul>
+</div>
+{% endif %}
+
+<form method="post" action="{{ url_for('orders.change', order_id=order.id) }}" class="checkout-form">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+  <fieldset class="panel">
+    <legend>{{ tr(order.event_type, "name") }} · {{ format_date(order.event_date) }}</legend>
+    <div class="field">
+      <label for="guests">{{ t("number_of_guests") }}</label>
+      <input id="guests" name="guests" type="number" inputmode="numeric" min="{{ order.min_guests_at_order }}"
+             max="9999" required value="{{ values.get('guests', '') }}" aria-describedby="guests-hint">
+    </div>
+    <p class="hint" id="guests-hint">{{ t("min_guests_at_order", n=order.min_guests_at_order) }}</p>
+
+    <table class="cart-table">
+      <thead>
+        <tr>
+          <th scope="col">{{ t("dish") }}</th>
+          <th scope="col" class="num col-price">{{ t("price") }}</th>
+          <th scope="col" class="num">{{ t("portions") }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for dish in dishes %}
+        <tr>
+          <td>{{ tr(dish, "name") }}<div class="hint">{{ t("minimum_order", n=dish.minimum) }}</div></td>
+          <td class="num col-price">{{ dish.price_nok }}</td>
+          <td class="num">
+            <label class="visually-hidden" for="qty-{{ dish.id }}">{{ t("portions") }}: {{ tr(dish, "name") }}</label>
+            <input id="qty-{{ dish.id }}" name="qty-{{ dish.id }}" type="number" inputmode="numeric" min="0"
+                   max="9999" value="{{ values.get('qty-' ~ dish.id, '') }}">
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <p class="hint">{{ t("change_dishes_hint") }}</p>
+  </fieldset>
+
+  {% include "_guest_groups.html" %}
+
+  <fieldset class="panel stack">
+    <legend>{{ t("delivery_notes") }}</legend>
+    <label for="delivery_notes" class="visually-hidden">{{ t("delivery_notes") }}</label>
+    <textarea id="delivery_notes" name="delivery_notes" rows="2" maxlength="500"
+              aria-describedby="notes-hint">{{ values.get('delivery_notes', '') }}</textarea>
+    <p class="hint" id="notes-hint">{{ t("delivery_notes_hint") }}</p>
+  </fieldset>
+
+  <button type="submit">{{ t("save_changes") }}</button>
+  <a href="{{ url_for('orders.detail', order_id=order.id) }}" class="cancel-link">{{ t("discard_changes") }}</a>
+</form>
+{% endblock %}

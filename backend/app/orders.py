@@ -6,10 +6,13 @@ in the Cypher that creates the order (repositories/orders.py).
 from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
+from werkzeug.datastructures import MultiDict
+
 TIMEZONE = ZoneInfo("Europe/Oslo")
 # Orders can be changed or cancelled until more than LOCK_DAYS days before the event (basic_desc.txt). A new order
 # must therefore be placed before that too (assumption in US-07, confirm with Ingrid).
 LOCK_DAYS = 5
+REMINDER_DAYS = 7  # reminder e-mail this many days before the event (basic_desc.txt, US-11)
 MAX_DAYS_AHEAD = 730
 MAX_TEXT_LENGTH = 500
 GUEST_GROUP_ROWS = 5  # rows on the checkout form
@@ -58,6 +61,25 @@ def is_locked(event_date, on: date | None = None) -> bool:
     return (_native(event_date) - (on or today())).days <= LOCK_DAYS
 
 
+def lock_until(on: date | None = None) -> date:
+    """Events on or before this date are locked."""
+    return (on or today()) + timedelta(days=LOCK_DAYS)
+
+
+def last_change_date(event_date) -> date:
+    """The last day the customer can change or cancel: more than LOCK_DAYS days before the event."""
+    return _native(event_date) - timedelta(days=LOCK_DAYS + 1)
+
+
+# Customers may change or cancel these until the lock. Cancelling a *submitted* order is an assumption
+# (open question 1 in state_order.md): nothing has been approved yet, so we let the customer withdraw it.
+CUSTOMER_CHANGEABLE = ("submitted", "approved")
+
+
+def customer_can_change(order: dict, on: date | None = None) -> bool:
+    return order["status"] in CUSTOMER_CHANGEABLE and not is_locked(order["event_date"], on)
+
+
 def parse_date(value) -> date | None:
     try:
         return date.fromisoformat(str(value).strip())
@@ -77,8 +99,6 @@ def parse_checkout(form, guests: int, allergen_codes: set[str], diet_codes: set[
                    on: date | None = None) -> tuple[dict, list[dict], list[tuple[str, dict]]]:
     """Read the checkout form (a werkzeug MultiDict). Returns (details, guest groups, errors as (i18n key, args)).
 
-    Guest groups are rows of "count + allergies/diets", never names (GDPR art. 9, data_model.md). A row with no
-    count and nothing ticked is ignored.
     """
     errors = []
     details = {
@@ -102,6 +122,17 @@ def parse_checkout(form, guests: int, allergen_codes: set[str], diet_codes: set[
     if details["payment_option"] not in PAYMENT_OPTIONS:
         errors.append(("payment_option_required", {}))
 
+    groups, group_errors = parse_guest_groups(form, guests, allergen_codes, diet_codes)
+    errors.extend(group_errors)
+
+    return details, groups, errors
+
+
+def parse_guest_groups(form, guests: int, allergen_codes: set[str],
+                       diet_codes: set[str]) -> tuple[list[dict], list[tuple[str, dict]]]:
+    """Guest-group rows of the checkout and change forms. Rows are "count + allergies/diets", never names
+    (GDPR art. 9, data_model.md). A row with no count and nothing ticked is ignored."""
+    errors = []
     groups = []
     for n in range(1, GUEST_GROUP_ROWS + 1):
         raw_count = form.get(f"group-{n}-count", "").strip()
@@ -118,8 +149,19 @@ def parse_checkout(form, guests: int, allergen_codes: set[str], diet_codes: set[
             groups.append({"position": n, "count": count, "allergens": allergens, "diets": diets})
     if sum(g["count"] for g in groups) > guests:
         errors.append(("groups_exceed_guests", {"n": guests}))
+    return groups, errors
 
-    return details, groups, errors
+
+def groups_as_form(groups: list[dict]) -> MultiDict:
+    """Saved guest groups as form values, to fill in the change form."""
+    values = MultiDict()
+    for n, g in enumerate(groups, start=1):
+        values.add(f"group-{n}-count", str(g["count"]))
+        for a in g["allergens"]:
+            values.add(f"group-{n}-allergens", a["code"])
+        for d in g["diets"]:
+            values.add(f"group-{n}-diets", d["code"])
+    return values
 
 
 def split_current_past(orders: list[dict]) -> tuple[list[dict], list[dict]]:
@@ -162,3 +204,42 @@ def capacity(booked_guests: int, wedding_booked: bool, order: dict) -> dict:
     limit = CAPACITY_WEDDING_DAY if wedding_booked or is_wedding else CAPACITY
     total = booked_guests + order["guests"]
     return {"booked": booked_guests, "total": total, "limit": limit, "over": total > limit}
+
+
+def parse_change(form, order: dict, dishes: list[dict], allergen_codes: set[str],
+                 diet_codes: set[str]) -> tuple[dict, list[tuple[str, dict]]]:
+    """Read the change form (US-09). `dishes` are the ones the customer may choose (repositories/orders.py
+    `change_options`). Returns ({guests, items, delivery_notes, groups}, errors).
+
+    The minimums are the ones saved on the order, not the event type's current minimum (US-06, US-09).
+    """
+    errors = []
+    minimum = order["min_guests_at_order"]
+    guests = _parse_count(form.get("guests", ""))
+    if guests is None or guests > 9999:
+        errors.append(("guests_missing", {}))
+    elif guests < minimum:
+        errors.append(("guests_below_saved_minimum", {"n": minimum}))
+
+    items = {}
+    for dish in dishes:
+        raw = form.get(f"qty-{dish['id']}", "").strip()
+        if raw in ("", "0"):
+            continue
+        qty = _parse_count(raw)
+        dish_min = max(minimum, dish.get("min_order_qty") or 0)
+        if qty is None or qty > 9999:
+            errors.append(("invalid_quantity", {"max": 9999}))
+        elif qty < dish_min:
+            errors.append(("dish_below_minimum", {"dish_id": dish["id"], "n": dish_min}))
+        else:
+            items[dish["id"]] = qty
+    if not items and not any(k == "dish_below_minimum" for k, _ in errors):
+        errors.append(("order_needs_a_dish", {}))
+
+    notes = form.get("delivery_notes", "").strip()
+    if len(notes) > MAX_TEXT_LENGTH:
+        errors.append(("text_too_long", {"max": MAX_TEXT_LENGTH}))
+    groups, group_errors = parse_guest_groups(form, guests or 0, allergen_codes, diet_codes)
+    errors.extend(group_errors)
+    return {"guests": guests, "items": items, "delivery_notes": notes, "groups": groups}, errors

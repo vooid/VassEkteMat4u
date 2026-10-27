@@ -58,7 +58,7 @@
   <h2>{{ t("history") }}</h2>
   <ol class="plain-list">
     {% for h in order.history %}
-    <li>{{ format_datetime(h.at) }}: {{ t("status_" ~ h.to_status) }}
+    <li>{{ format_datetime(h.at) }}: {{ t("history_changed") if h.from_status == h.to_status else t("status_" ~ h.to_status) }}
       {%- if staff_view and h.by_id %} <span class="hint">({{ h.by_id }})</span>{% endif %}
       {%- if h.reason %}<div class="pre">{{ t("reason") }}: {{ h.reason }}</div>{% endif %}</li>
     {% endfor %}

@@ -31,3 +31,8 @@ def get_with_hash(email: str) -> dict | None:
     """Only for checking a password at login; never pass the result to a template."""
     rows = run("MATCH (s:Staff {email: $email}) RETURN s {.email, .name, .role, .password_hash} AS s", email=email)
     return rows[0]["s"] if rows else None
+
+
+def admin_emails() -> list[str]:
+    """Who gets the admin notifications (changed and cancelled orders, the daily lock summary)."""
+    return [r["email"] for r in run("MATCH (s:Staff {role: 'admin'}) RETURN s.email AS email ORDER BY s.email")]

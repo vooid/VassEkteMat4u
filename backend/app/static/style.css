@@ -185,6 +185,10 @@ p.total { font-weight: 700; color: var(--green); }
 .payment-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
 button.danger { background: var(--danger); border-color: var(--danger); }
 button.secondary { background: #fff; color: var(--green); }
+.cancel-order { margin-top: 16px; }
+.cancel-order summary { cursor: pointer; color: var(--danger); }
+.cancel-order .stack { max-width: 420px; }
+.cancel-link { margin-left: 12px; }
 
 @media (max-width: 600px) {
   .facts { grid-template-columns: 1fr; }

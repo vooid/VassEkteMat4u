@@ -23,6 +23,22 @@ Create a staff account for the admin pages (the password is asked for twice, so 
 .venv/bin/flask --app app create-staff ingrid@ektemat.no --name "Ingrid Solheim" --role admin
 ```
 
+Run the daily job once a day (reminders 7 days before the event, lock 5 days before, summary e-mail to the admins).
+Running it twice on the same day is harmless. Use `--date YYYY-MM-DD` to try it as if it were another day:
+
+```sh
+.venv/bin/flask --app app run-daily-jobs
+```
+
+On a server, schedule it with cron, e.g. every morning at 06:00 Norwegian time (set `SITE_URL` in `.env` so the links
+in the e-mails point to the real site):
+
+```
+0 6 * * *  cd /path/to/backend && .venv/bin/flask --app app run-daily-jobs >> daily-jobs.log 2>&1
+```
+
+The 5-day rule itself is checked by date on every request, so a day the job doesn't run never opens a locked order.
+
 Roles are `admin`, `kitchen` and `driver`. Only `admin` has pages so far. Staff log in at `/staff/login`; there is no
 self-registration for staff.
 
@@ -53,6 +69,8 @@ RUN_NEO4J_TESTS=1 .venv/bin/python -m pytest
 | `/order` | Checkout (logged in): event date, delivery address and notes, allergies and diets per guest group, payment option. Creates the order as *Submitted* | US-06, US-07 |
 | `/orders` | The customer's orders, current and past, with status and payment status | US-08 |
 | `/orders/<id>` | One order: dishes at the prices when ordered, guest groups, status history. Other customers' orders give 404 | US-08 |
+| `/orders/<id>/change` | Change guests, dishes, guest groups and delivery notes until more than 5 days before the event. The minimum saved on the order applies; dishes already ordered keep their price. Changing an approved order e-mails the admins | US-09 |
+| `POST /orders/<id>/cancel` | Cancel (with a confirmation tick) until more than 5 days before the event; the customer and the admins are e-mailed | US-10 |
 | `/staff/login` | Login for Ekte Mat staff (separate from customer login) | – |
 | `/admin/orders` | Admin: all orders, filtered by status (default: submitted, approved, in preparation) and event-date range, with guests already booked that day | US-21, US-23 |
 | `/admin/orders/<id>` | Admin: the whole order and the customer; approve, reject with reason, release to kitchen (5 days or less before the event), mark delivered, set payment status; capacity warning above 400 guests a day, 250 with a wedding | US-22 – US-25 |
@@ -98,7 +116,8 @@ app/
   cart.py            cart in the session + minimum-order rules (pure functions)
   auth.py            Flask-Login: customer and staff users, login checks, customer_required / staff_required
   urls.py            safe_next(): redirect only to local paths
-  cli.py             flask create-staff
+  cli.py             flask create-staff, flask run-daily-jobs
+  jobs.py            the daily job: 7-day reminders, 5-day lock
   orders.py          checkout validation, 5-day rule, admin transitions, capacity (pure functions)
   mail.py            outgoing e-mail -> development outbox (no mail service yet)
   i18n.py            Norwegian/English: UI strings (TEXTS) and tr() for _no/_en data fields
