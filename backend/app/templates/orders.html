@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}{{ t("my_orders") }} – Ekte Mat{% endblock %}
+
+{% macro order_table(rows) %}
+<table class="cart-table orders-table">
+  <thead>
+    <tr>
+      <th scope="col">{{ t("order") }}</th>
+      <th scope="col">{{ t("date") }}</th>
+      <th scope="col" class="col-price">{{ t("guests") }}</th>
+      <th scope="col">{{ t("status") }}</th>
+      <th scope="col" class="col-price">{{ t("payment") }}</th>
+      <th scope="col" class="num">{{ t("total") }}</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for o in rows %}
+    <tr>
+      <td><a href="{{ url_for('orders.detail', order_id=o.id) }}">{{ o.id }}</a>
+        <div class="hint">{{ tr(o.event_type, "name") }}</div></td>
+      <td>{{ format_date(o.event_date) }}</td>
+      <td class="col-price">{{ o.guests }}</td>
+      <td><span class="status status-{{ o.status }}">{{ t("status_" ~ o.status) }}</span></td>
+      <td class="col-price">{{ t("payment_" ~ o.payment_status) }}</td>
+      <td class="num">{{ o.total_nok }} kr</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endmacro %}
+
+{% block content %}
+<h1>{{ t("my_orders") }}</h1>
+
+<h2>{{ t("current_orders") }}</h2>
+{% if current %}{{ order_table(current) }}{% else %}
+  <p class="empty">{{ t("no_orders") }} <a href="{{ url_for('menu.index') }}">{{ t("back_to_menu") }}</a></p>
+{% endif %}
+
+<h2>{{ t("past_orders") }}</h2>
+{% if past %}{{ order_table(past) }}{% else %}<p class="empty">{{ t("no_past_orders") }}</p>{% endif %}
+{% endblock %}

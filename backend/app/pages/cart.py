@@ -8,7 +8,7 @@ from ..repositories import cart as cart_repo
 bp = Blueprint("cart", __name__, url_prefix="/cart")
 
 
-def _load():
+def load():
     """The cart from the session, its event type and lines. Removes dishes that are no longer available."""
     c = cart.get()
     if not c["items"]:
@@ -28,7 +28,7 @@ def _load():
 
 @bp.get("")
 def view():
-    c, event_type, lines = _load()
+    c, event_type, lines = load()
     problems = cart.problems(c, event_type, lines) if event_type else [("cart_empty", {})]
     return render_template("cart.html", cart=c, event_type=event_type, lines=lines,
                            total=cart.total(lines), problems=problems)

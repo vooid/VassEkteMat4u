@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}{{ t("order_heading", id=order.id) }} – Ekte Mat{% endblock %}
+{% block content %}
+<p><a href="{{ url_for('orders.history') }}">← {{ t("all_orders") }}</a></p>
+<h1>{{ t("order_heading", id=order.id) }}</h1>
+<p class="lead">
+  <span class="status status-{{ order.status }}">{{ t("status_" ~ order.status) }}</span>
+  <span class="pill">{{ t("payment") }}: {{ t("payment_" ~ order.payment_status) }}</span>
+</p>
+{% if read_only %}
+  <p class="flash flash-warning">{{ t("read_only_note") }}</p>
+{% else %}
+  <p class="hint">{{ t("change_coming") }}</p>
+{% endif %}
+
+<section class="panel">
+  <h2>{{ t("event_details") }}</h2>
+  <dl class="facts">
+    <dt>{{ t("event_type") }}</dt><dd>{{ tr(order.event_type, "name") }}</dd>
+    <dt>{{ t("event_date") }}</dt><dd>{{ format_date(order.event_date) }}</dd>
+    <dt>{{ t("guests") }}</dt><dd>{{ order.guests }} <span class="hint">({{ t("min_guests_at_order", n=order.min_guests_at_order) }})</span></dd>
+    <dt>{{ t("delivery_address") }}</dt><dd class="pre">{{ order.delivery_address }}</dd>
+    {% if order.delivery_notes %}<dt>{{ t("delivery_notes") }}</dt><dd class="pre">{{ order.delivery_notes }}</dd>{% endif %}
+    <dt>{{ t("payment_option") }}</dt><dd>{{ t("option_" ~ order.payment_option) }}</dd>
+  </dl>
+</section>
+
+<table class="cart-table">
+  <thead>
+    <tr>
+      <th scope="col">{{ t("dish") }}</th>
+      <th scope="col" class="num col-price">{{ t("price") }}</th>
+      <th scope="col" class="num">{{ t("portions") }}</th>
+      <th scope="col" class="num">{{ t("line_total") }}</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for line in order.lines %}
+    <tr>
+      <td>{{ tr(line, "name") }}</td>
+      <td class="num col-price">{{ line.unit_price_nok }}</td>
+      <td class="num">{{ line.quantity }}</td>
+      <td class="num">{{ line.line_total }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+  <tfoot>
+    <tr>
+      <th scope="row">{{ t("total") }}</th>
+      <td class="col-price"></td>
+      <td></td>
+      <td class="num total">{{ order.total_nok }} kr</td>
+    </tr>
+  </tfoot>
+</table>
+
+<section class="panel">
+  <h2>{{ t("guest_groups") }}</h2>
+  {% if order.groups %}
+  <ul class="plain-list">
+    {% for g in order.groups %}
+    <li><strong>{{ t("group_summary", count=g.count) }}:</strong>
+      {% for x in g.allergens + g.diets %}{{ tr(x, "name") }}{% if not loop.last %}, {% endif %}{% endfor %}</li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="hint">{{ t("no_groups") }}</p>
+  {% endif %}
+</section>
+
+<section class="panel">
+  <h2>{{ t("history") }}</h2>
+  <ol class="plain-list">
+    {% for h in order.history %}
+    <li>{{ format_datetime(h.at) }}: {{ t("status_" ~ h.to_status) }}</li>
+    {% endfor %}
+  </ol>
+</section>
+{% endblock %}

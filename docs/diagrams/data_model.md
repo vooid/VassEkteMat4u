@@ -6,7 +6,8 @@ each association is a **relationship type**. GitHub renders the Mermaid diagram 
 
 Built from the [user stories](../requirements/user_stories.md), the [state diagrams](state_order.md) and the
 [decisions log](../decisions.md) (2026-10-27: basic login, NO/EN interface, no deposits, corporate accounts, kitchen and
-driver screens). Storage is Neo4j (`CLAUDE.md`). Only `:EventType` is implemented in the backend so far.
+driver screens). Storage is Neo4j (`CLAUDE.md`). Implemented in the backend so far: `:EventType`, `:FoodItem`,
+`:Allergen`, `:Diet`, `:Customer`, `:Order`, `:GuestGroup` and `:StatusChange`.
 
 ```mermaid
 classDiagram
@@ -78,7 +79,7 @@ classDiagram
         DateTime locked_at
     }
     class GuestGroup {
-        String label
+        int position
         int count
     }
     class StatusChange {
@@ -143,7 +144,7 @@ classDiagram
 | `:Customer` | A person who orders, private or company user | `email` unique; `language` `no`/`en`; no reset-token fields (no e-mail reset, decision 2026-10-27) | US-04, US-08, US-31 |
 | `:Company` | Corporate account | `approval_limit_nok` default 15 000 | US-13 – US-16 |
 | `:Order` | One catering order | See values below | US-05 – US-11, US-21 – US-25 |
-| `:GuestGroup` | A group of guests with the same allergies/diets, e.g. "4 guests, gluten-free" | Never linked to named guests (GDPR) | US-07, US-27, US-28 |
+| `:GuestGroup` | A group of guests with the same allergies/diets, e.g. "4 guests, gluten-free" | Never linked to named guests (GDPR); `position` is the row number on the form, no free-text label so no names end up here | US-07, US-27, US-28 |
 | `:StatusChange` | History of every status change: who, when, from, to | Audit trail for the state machine | US-15, US-22, US-25, US-30 |
 | `:Question` / `:Answer` | Customer question about an order, and Ekte Mat's answer | | US-12, US-26 |
 | `:Staff` | Ekte Mat users | `role`: `admin`, `kitchen`, `driver`; kitchen logs in with `pin_hash` | US-18 – US-30 |
@@ -195,7 +196,7 @@ Kitchen screen for one day (US-27): portions per dish and allergies per guest gr
 MATCH (o:Order {status: 'in_preparation', event_date: date($day)})-[c:CONTAINS]->(f:FoodItem)
 WITH o, collect({dish: f.name_no, portions: c.quantity}) AS dishes
 OPTIONAL MATCH (o)-[:HAS_GROUP]->(g:GuestGroup)-[:HAS_ALLERGY]->(a:Allergen)
-RETURN o.id, o.guests, dishes, collect(DISTINCT {group: g.label, count: g.count, allergen: a.code}) AS allergies
+RETURN o.id, o.guests, dishes, collect(DISTINCT {group: g.position, count: g.count, allergen: a.code}) AS allergies
 ```
 
 Guests already booked on a date (US-23 capacity):
@@ -205,6 +206,12 @@ MATCH (o:Order {event_date: date($day)})
 WHERE o.status IN ['submitted', 'approved', 'in_preparation']
 RETURN sum(o.guests) AS booked
 ```
+
+## Development only
+
+`:OutboxMessage {id, recipient, subject, body, created_at}` holds the e-mails the system would have sent (order
+confirmations so far), until a mail service is chosen. It isn't part of the domain model and should be removed or
+emptied before production, because it stores personal data.
 
 ## Not in the model yet
 

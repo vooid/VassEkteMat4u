@@ -15,6 +15,7 @@
     </nav>
     <div class="account-nav">
       {% if current_user.is_authenticated %}
+        <a href="{{ url_for('orders.history') }}">{{ t("my_orders") }}</a>
         <span class="who">{{ current_user.name }}</span>
         <form method="post" action="{{ url_for('account.logout') }}">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
