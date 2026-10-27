@@ -52,6 +52,11 @@ twice, like the password):
 Five wrong PINs in a row block that person's PIN login for 15 minutes (the password still works). Admins can't use a
 PIN.
 
+PIN login only works on devices an admin has approved: log in as an admin on the kitchen tablet or the driver's phone,
+open **Devices** (`/admin/devices`), give the device a name and approve it, then log out. The device keeps a random
+token in a cookie for a year (only its hash is stored); removing the device in the list stops its PIN login at once.
+An IP allow-list wouldn't work, because drivers are on mobile data.
+
 Run the tests. The unit tests use a fake driver, so no database is needed:
 
 ```sh
@@ -76,14 +81,15 @@ RUN_NEO4J_TESTS=1 .venv/bin/python -m pytest
 | `/register` | Create a customer account (name, e-mail, phone, password ≥ 8 characters); logs in and keeps the cart | US-04 |
 | `/login` | Log in with e-mail and password; a failed login gives one generic message | US-04 |
 | `POST /logout` | Log out; the cart is cleared, the language is kept | US-04 |
-| `/order` | Checkout (logged in): event date, delivery address and notes, allergies and diets per guest group, payment option. Creates the order as *Submitted* | US-06, US-07 |
+| `/order` | Checkout (logged in): event date and time (06:00–23:00), delivery address and notes, allergies and diets per guest group, payment option. Creates the order as *Submitted* | US-06, US-07 |
 | `/orders` | The customer's orders, current and past, with status and payment status | US-08 |
 | `/orders/<id>` | One order: dishes at the prices when ordered, guest groups, status history. Other customers' orders give 404 | US-08 |
-| `/orders/<id>/change` | Change guests, dishes, guest groups and delivery notes until more than 5 days before the event. The minimum saved on the order applies; dishes already ordered keep their price. Changing an approved order e-mails the admins | US-09 |
+| `/orders/<id>/change` | Change guests, time, dishes, guest groups and delivery notes until more than 5 days before the event. The minimum saved on the order applies; dishes already ordered keep their price. Changing an approved order e-mails the admins | US-09 |
 | `POST /orders/<id>/cancel` | Cancel (with a confirmation tick) until more than 5 days before the event; the customer and the admins are e-mailed | US-10 |
 | `POST /orders/<id>/questions` | Ask a question from the order page (any status); the answer shows on the order page. The admins are e-mailed | US-12 |
 | `/staff/login` | Login for Ekte Mat staff (separate from customer login); admin → orders, kitchen → kitchen screen, driver → driver screen | – |
-| `/staff/pin` | PIN login for kitchen and driver staff: pick your name, type your PIN | US-27 |
+| `/staff/pin` | PIN login for kitchen and driver staff: pick your name, type your PIN. Only on approved devices (403 elsewhere) | US-27 |
+| `/admin/devices` | Admin: approve the device you're using for PIN login, see when each device was last used, remove devices | US-27 |
 | `/kitchen?day=YYYY-MM-DD` | Kitchen screen (kitchen and admin), today by default: orders in preparation, portions per dish, guest groups with allergies in red, an "Allergies seen" button that stores who and when. Refreshes every minute | US-27, US-28 |
 | `/driver?day=YYYY-MM-DD` | Driver screen (driver and admin): the day's orders in preparation with address, map link, customer's phone and delivery notes; "Mark as delivered" | US-30 |
 | `/admin/questions` | Admin: unanswered questions, newest first, linking to the order | US-26 |
@@ -157,5 +163,5 @@ The full data model is in [`docs/diagrams/data_model.md`](../docs/diagrams/data_
 ## Before production
 
 - **Secrets:** never commit `.env`. Set a long random `SECRET_KEY` (it signs the session cookie). Serve over HTTPS and set `SESSION_COOKIE_SECURE=1`. Never publish the Claude API key (`CLAUDE.md`).
-- **PIN login:** a short PIN is only as safe as the device it's typed on. Allow `/staff/pin` only from the kitchen tablet and the drivers' phones (e.g. on Ekte Mat's network or behind the hosting's IP allow-list), and change a PIN when someone leaves.
+- **PIN login:** approve only Ekte Mat's own tablet and the drivers' work phones under Devices, remove a device that is lost or replaced, and change a PIN (`flask set-pin`) when someone leaves. Serve over HTTPS so the device cookie can't be read on the way.
 - **Hosting:** the case requires data in the EU/EEA and running costs under 3 000 NOK/month (`docs/context/04_vision_scope_constraints/`). Check the region and price of any hosted Neo4j (e.g. Neo4j AuraDB) before choosing, and get a data processing agreement (GDPR note).

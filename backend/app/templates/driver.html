@@ -7,7 +7,7 @@
 
 {% for o in rows %}
 <article class="panel screen-order{% if o.delivered %} done{% endif %}">
-  <h2>{{ tr(o.event_type, "name") }} · {{ t("guests_n", n=o.guests) }} <span class="hint">#{{ o.id }}</span></h2>
+  <h2>{% if o.event_time %}<span class="time">{{ o.event_time }}</span> {% endif %}{{ tr(o.event_type, "name") }} · {{ t("guests_n", n=o.guests) }} <span class="hint">#{{ o.id }}</span></h2>
   <p class="pre address">{{ o.delivery_address }}</p>
   <p class="screen-links">
     <a class="button" href="https://www.google.com/maps/search/?api=1&query={{ o.delivery_address | urlencode }}"

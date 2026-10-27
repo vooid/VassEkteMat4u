@@ -1,12 +1,12 @@
 """Admin pages: orders (US-21 – US-25), answering questions (US-26) and event-type minimums (US-20).
 Staff with role "admin" only."""
-from flask import Blueprint, abort, current_app, flash, redirect, render_template, request, url_for
+from flask import Blueprint, abort, current_app, flash, make_response, redirect, render_template, request, url_for
 from flask_login import current_user
 
-from .. import mail, orders
+from .. import auth, mail, orders
 from ..auth import staff_required
 from ..i18n import format_date, t, t_in
-from ..repositories import event_types, questions
+from ..repositories import devices, event_types, questions
 from ..repositories import kitchen as kitchen_repo
 from ..repositories import orders as orders_repo
 
@@ -129,6 +129,38 @@ def _send_answer(order: dict, customer: dict, question: str, text: str) -> None:
                 date=format_date(order["event_date"], lang), question=question, answer=text,
                 url=url_for("orders.detail", order_id=order["id"], _external=True))
     mail.send(customer["email"], t_in(lang, "mail_answer_subject", id=order["id"]), body)
+
+
+@bp.get("/devices")
+@admin_only
+def device_list():
+    return render_template("admin_devices.html", devices=devices.list_all(), this_device=auth.pin_device())
+
+
+@bp.post("/devices")
+@admin_only
+def approve_device():
+    """Approve the device the admin is using now, e.g. the kitchen tablet, for PIN login."""
+    name = request.form.get("name", "").strip()
+    if not name or len(name) > 60:
+        flash(t("device_name_required"), "error")
+        return redirect(url_for("admin.device_list"))
+    token, token_hash = auth.new_device_token()
+    devices.approve(name, token_hash, current_user.email)
+    flash(t("device_approved", name=name), "success")
+    response = make_response(redirect(url_for("admin.device_list")))
+    response.set_cookie(auth.PIN_DEVICE_COOKIE, token, max_age=auth.PIN_DEVICE_DAYS * 24 * 3600, httponly=True,
+                        samesite="Lax", secure=current_app.config["SESSION_COOKIE_SECURE"])
+    return response
+
+
+@bp.post("/devices/<device_id>/revoke")
+@admin_only
+def revoke_device(device_id: str):
+    if not devices.revoke(device_id):
+        abort(404)
+    flash(t("device_revoked"), "success")
+    return redirect(url_for("admin.device_list"))
 
 
 @bp.get("/event-types")

@@ -5,7 +5,7 @@ from ..db import run
 KITCHEN_DAY_QUERY = """
 MATCH (o:Order {status: 'in_preparation', event_date: date($day)})-[:FOR_EVENT]->(e:EventType)
 OPTIONAL MATCH (s:Staff)-[seen:CONFIRMED_ALLERGIES]->(o)
-RETURN o {.id, .guests, .delivery_notes,
+RETURN o {.id, .event_time, .guests, .delivery_notes,
     event_type: e {.name_no, .name_en},
     lines: COLLECT {
         MATCH (o)-[line:CONTAINS]->(f:FoodItem)
@@ -20,7 +20,7 @@ RETURN o {.id, .guests, .delivery_notes,
     },
     seen: CASE WHEN seen IS NULL THEN null ELSE {by: s.name, at: seen.at} END
 } AS order
-ORDER BY o.created_at
+ORDER BY o.event_time, o.created_at
 """
 
 # Pressing "Seen" twice (or two cooks at once) keeps the first confirmation.
@@ -43,10 +43,10 @@ DRIVER_DAY_QUERY = """
 MATCH (c:Customer)-[:PLACED]->(o:Order {event_date: date($day)})-[:FOR_EVENT]->(e:EventType)
 WHERE o.status IN ['in_preparation', 'delivered']
 OPTIONAL MATCH (s:Staff)-[d:DELIVERED]->(o)
-RETURN o {.id, .status, .guests, .delivery_address, .delivery_notes,
+RETURN o {.id, .status, .event_time, .guests, .delivery_address, .delivery_notes,
           event_type: e {.name_no, .name_en}, customer: c {.name, .phone},
           delivered: CASE WHEN d IS NULL THEN null ELSE {by: s.name, at: d.at} END} AS order
-ORDER BY o.status DESC, o.created_at
+ORDER BY o.status DESC, o.event_time, o.created_at
 """
 
 

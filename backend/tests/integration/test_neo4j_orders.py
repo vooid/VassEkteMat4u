@@ -31,7 +31,8 @@ def app_ctx():
 
 
 def details(days=30):
-    return {"event_date": orders.today() + timedelta(days=days), "delivery_address": "Bryggen 1",
+    return {"event_date": orders.today() + timedelta(days=days), "event_time": "12:00",
+               "delivery_address": "Bryggen 1",
             "delivery_notes": "", "payment_option": "invoice"}
 
 

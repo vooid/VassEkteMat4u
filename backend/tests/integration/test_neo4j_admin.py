@@ -36,7 +36,8 @@ def app_ctx():
 
 
 def place(guests=40, event_type="conference", dish="lentil-stew", days=700):
-    details = {"event_date": orders.today() + timedelta(days=days), "delivery_address": "Bryggen 1",
+    details = {"event_date": orders.today() + timedelta(days=days), "event_time": "12:00",
+               "delivery_address": "Bryggen 1",
                "delivery_notes": "", "payment_option": "invoice"}
     return orders_repo.create(CUSTOMER, event_type, guests, {dish: guests}, details, [])["id"]
 

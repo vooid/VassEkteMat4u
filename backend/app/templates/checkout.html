@@ -29,6 +29,11 @@
            max="{{ latest.isoformat() }}" value="{{ values.get('event_date', '') }}" aria-describedby="event-date-hint">
     <p class="hint" id="event-date-hint">{{ t("event_date_hint", date=earliest, days=lock_days) }}</p>
 
+    <label for="event_time">{{ t("event_time") }}</label>
+    <input id="event_time" name="event_time" type="time" required min="{{ earliest_time }}" max="{{ latest_time }}"
+           step="900" value="{{ values.get('event_time', '') }}" aria-describedby="event-time-hint">
+    <p class="hint" id="event-time-hint">{{ t("event_time_hint") }}</p>
+
     <label for="delivery_address">{{ t("delivery_address") }}</label>
     <textarea id="delivery_address" name="delivery_address" rows="2" required maxlength="500"
               autocomplete="street-address">{{ values.get('delivery_address', '') }}</textarea>

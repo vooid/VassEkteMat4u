@@ -87,7 +87,7 @@ TEXTS = {
         "event_date_hint": "Tidligst {date}. Bestillinger kan endres til {days} dager før arrangementet.",
         "delivery_address": "Leveringsadresse",
         "delivery_notes": "Beskjed om levering",
-        "delivery_notes_hint": "For eksempel inngang, tidspunkt eller kontaktperson. Ikke skriv allergier eller navn på gjester her.",
+        "delivery_notes_hint": "For eksempel inngang, parkering eller kontaktperson. Ikke skriv allergier eller navn på gjester her.",
         "payment_option": "Betaling",
         "option_invoice": "Faktura",
         "option_vipps": "Vipps",
@@ -101,6 +101,10 @@ TEXTS = {
         "submit_order": "Send bestillingen",
         "submit_hint": "Du får en bekreftelse på e-post.",
         "event_date_invalid": "Velg en dato for arrangementet.",
+        "event_time": "Klokkeslett",
+        "event_time_hint": "Når skal maten være klar? Vi leverer litt før.",
+        "event_time_invalid": "Velg et klokkeslett mellom {earliest} og {latest}.",
+        "at_time": "{date} kl. {time}",
         "event_date_too_soon": "Arrangementet må være mer enn {days} dager fram i tid (tidligst {date}).",
         "event_date_too_far": "Vi tar imot bestillinger inntil to år fram i tid.",
         "address_required": "Skriv inn leveringsadressen.",
@@ -215,6 +219,22 @@ TEXTS = {
         "mail_approved_body": "Hei {name},\n\nBestilling {id} ({event}, {date}) er godkjent. Vi gleder oss!\n\nSe bestillingen: {url}\n\nHilsen Ekte Mat",
         "mail_rejected_subject": "Ekte Mat: bestilling {id} er avvist",
         "mail_rejected_body": "Hei {name},\n\nDessverre kan vi ikke ta bestilling {id} ({event}, {date}).\n\nGrunn: {reason}\n\nTa gjerne kontakt hvis du har spørsmål.\nSe bestillingen: {url}\n\nHilsen Ekte Mat",
+        "devices": "Enheter",
+        "devices_heading": "Enheter med PIN-innlogging",
+        "devices_intro": "Kjøkken og sjåfører kan bare logge inn med PIN på enheter som er godkjent her. Logg inn som administrator på nettbrettet eller telefonen, godkjenn den, og logg ut igjen. Godkjenningen varer i ett år på den enheten.",
+        "this_device_approved": "Denne enheten er godkjent: {name}.",
+        "approve_this_device": "Godkjenn denne enheten",
+        "device_name": "Navn på enheten",
+        "device_name_hint": "For eksempel «Kjøkkennettbrett» eller «Olas telefon».",
+        "device_name_required": "Gi enheten et navn (høyst 60 tegn).",
+        "device_approved": "«{name}» er godkjent for PIN-innlogging.",
+        "device_revoked": "Enheten kan ikke lenger brukes til PIN-innlogging.",
+        "revoke": "Fjern",
+        "no_devices": "Ingen enheter er godkjent ennå.",
+        "approved_by": "Godkjent av {by} {at}",
+        "last_used": "Sist brukt {at}",
+        "never_used": "Ikke brukt ennå",
+        "device_not_approved": "Denne enheten er ikke godkjent for PIN-innlogging. Logg inn med e-post og passord, eller be en administrator godkjenne enheten under Enheter.",
         "pin_login": "Innlogging med PIN",
         "pin_login_link": "Kjøkken og sjåfører: logg inn med PIN",
         "pin_login_hint": "For kjøkkenet og sjåførene. Administratorer logger inn med e-post og passord.",
@@ -344,7 +364,7 @@ TEXTS = {
         "event_date_hint": "{date} at the earliest. Orders can be changed until {days} days before the event.",
         "delivery_address": "Delivery address",
         "delivery_notes": "Delivery notes",
-        "delivery_notes_hint": "For example entrance, time or contact person. Don't write allergies or guests' names here.",
+        "delivery_notes_hint": "For example entrance, parking or contact person. Don't write allergies or guests' names here.",
         "payment_option": "Payment",
         "option_invoice": "Invoice",
         "option_vipps": "Vipps",
@@ -358,6 +378,10 @@ TEXTS = {
         "submit_order": "Submit order",
         "submit_hint": "You'll get a confirmation by e-mail.",
         "event_date_invalid": "Choose a date for the event.",
+        "event_time": "Time",
+        "event_time_hint": "When should the food be ready? We deliver a little before.",
+        "event_time_invalid": "Choose a time between {earliest} and {latest}.",
+        "at_time": "{date} at {time}",
         "event_date_too_soon": "The event must be more than {days} days ahead ({date} at the earliest).",
         "event_date_too_far": "We take orders up to two years ahead.",
         "address_required": "Enter the delivery address.",
@@ -464,6 +488,22 @@ TEXTS = {
         "mail_approved_body": "Hi {name},\n\nOrder {id} ({event}, {date}) is approved. We're looking forward to it!\n\nSee your order: {url}\n\nBest regards,\nEkte Mat",
         "mail_rejected_subject": "Ekte Mat: order {id} rejected",
         "mail_rejected_body": "Hi {name},\n\nUnfortunately we can't take order {id} ({event}, {date}).\n\nReason: {reason}\n\nPlease get in touch if you have any questions.\nSee your order: {url}\n\nBest regards,\nEkte Mat",
+        "devices": "Devices",
+        "devices_heading": "Devices with PIN login",
+        "devices_intro": "Kitchen and driver staff can only log in with a PIN on devices approved here. Log in as an admin on the tablet or phone, approve it, and log out again. The approval lasts a year on that device.",
+        "this_device_approved": "This device is approved: {name}.",
+        "approve_this_device": "Approve this device",
+        "device_name": "Device name",
+        "device_name_hint": "For example “Kitchen tablet” or “Ola's phone”.",
+        "device_name_required": "Give the device a name (at most 60 characters).",
+        "device_approved": "“{name}” is approved for PIN login.",
+        "device_revoked": "The device can no longer be used for PIN login.",
+        "revoke": "Remove",
+        "no_devices": "No devices are approved yet.",
+        "approved_by": "Approved by {by} {at}",
+        "last_used": "Last used {at}",
+        "never_used": "Not used yet",
+        "device_not_approved": "This device isn't approved for PIN login. Log in with e-mail and password, or ask an admin to approve the device under Devices.",
         "pin_login": "PIN login",
         "pin_login_link": "Kitchen and drivers: log in with a PIN",
         "pin_login_hint": "For the kitchen and the drivers. Admins log in with e-mail and password.",
@@ -553,6 +593,12 @@ def format_date(value, lang: str | None = None) -> str:
     return d.strftime("%d.%m.%Y")
 
 
+def format_event(event_date, event_time=None, lang: str | None = None) -> str:
+    """The event's date, with the time when the order has one (orders from before feature 7 don't)."""
+    day = format_date(event_date, lang)
+    return t_in(lang or current_language(), "at_time", date=day, time=event_time) if event_time else day
+
+
 def format_datetime(value) -> str:
     """Date and time in Norwegian time."""
     dt = _native(value)
@@ -575,5 +621,5 @@ def init_app(app: Flask) -> None:
         # The <html lang> attribute uses "nb" (Norwegian Bokmål) for "no".
         g.html_lang = "nb" if g.lang == "no" else "en"
 
-    app.jinja_env.globals.update(t=t, tr=tr, current_language=current_language, format_date=format_date,
+    app.jinja_env.globals.update(t=t, tr=tr, current_language=current_language, format_date=format_date, format_event=format_event,
                                  format_datetime=format_datetime)

@@ -10,7 +10,7 @@ from datetime import date, timedelta
 from flask import current_app, url_for
 
 from . import mail, orders
-from .i18n import format_date, t_in
+from .i18n import format_date, format_event, t_in
 from .repositories import orders as orders_repo
 
 ADMIN_LANGUAGE = "no"
@@ -35,7 +35,7 @@ def _send_reminder(row: dict) -> None:
     lang = customer.get("language")
     event = row["event_type"].get(f"name_{lang}") or row["event_type"]["name_no"]
     body = t_in(lang, "mail_reminder_body", name=customer["name"], id=order["id"], event=event,
-                date=format_date(order["event_date"], lang), guests=order["guests"],
+                date=format_event(order["event_date"], order.get("event_time"), lang), guests=order["guests"],
                 last_day=format_date(orders.last_change_date(order["event_date"]), lang),
                 url=url_for("orders.detail", order_id=order["id"], _external=True))
     mail.send(customer["email"], t_in(lang, "mail_reminder_subject", id=order["id"]), body)

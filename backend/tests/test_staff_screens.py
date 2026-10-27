@@ -4,6 +4,7 @@ from datetime import date, datetime, timezone
 import pytest
 
 from app import auth, create_app, orders
+from app.repositories import devices
 from app.repositories import kitchen as kitchen_repo
 from app.repositories import orders as orders_repo
 from app.repositories import questions
@@ -17,13 +18,21 @@ VEGAN = {"code": "vegan", "name_no": "Vegansk", "name_en": "Vegan"}
 
 # --- PIN login ---------------------------------------------------------------------
 
+DEVICE_TOKEN = "kitchen-tablet-token"
+
+
 class PinStore:
     def __init__(self, locked=False):
+        self.device_checks = []
         self.member = {**STAFF["kitchen"], "pin_hash": auth.hash_password("4321"), "failed_pin_attempts": 0,
                        "locked": locked}
         self.failed, self.succeeded = [], []
 
     def __call__(self, query, params):
+        if query == devices.CHECK_QUERY:
+            self.device_checks.append(params)
+            return [{"device": {"id": "d1", "name": "Kjøkkennettbrett"}}] \
+                if params["token_hash"] == auth.device_token_hash(DEVICE_TOKEN) else []
         if "s.pin_hash IS NOT NULL" in query and "$email" in query:
             return [{"s": self.member}] if params["email"] == self.member["email"] else []
         if "s.pin_hash IS NOT NULL" in query:
@@ -40,9 +49,20 @@ class PinStore:
 
 
 @pytest.fixture
-def pins(driver):
+def pins(client, driver):
     driver.handler = PinStore()
+    client.set_cookie(auth.PIN_DEVICE_COOKIE, DEVICE_TOKEN)
     return driver.handler
+
+
+def test_pin_login_only_on_approved_devices(client, pins):
+    client.delete_cookie(auth.PIN_DEVICE_COOKIE)
+    response = client.get("/staff/pin")
+    assert response.status_code == 403 and "ikke godkjent for PIN-innlogging" in response.get_data(as_text=True)
+    assert 'name="pin"' not in response.get_data(as_text=True)
+    client.set_cookie(auth.PIN_DEVICE_COOKIE, "made-up-token")
+    response = client.post("/staff/pin", data={"email": STAFF["kitchen"]["email"], "pin": "4321"})
+    assert response.status_code == 403 and pins.succeeded == [] and pins.failed == []
 
 
 def test_pin_login_lands_on_the_kitchen_screen(client, pins):
@@ -51,6 +71,7 @@ def test_pin_login_lands_on_the_kitchen_screen(client, pins):
     response = client.post("/staff/pin", data={"email": STAFF["kitchen"]["email"], "pin": "4321"})
     assert response.status_code == 302 and response.headers["Location"].endswith("/kitchen")
     assert pins.succeeded == [STAFF["kitchen"]["email"]]
+    assert pins.device_checks[-1]["touch"] is True  # a login marks the device as used
 
 
 def test_wrong_pin_is_counted(client, pins):
@@ -62,6 +83,7 @@ def test_wrong_pin_is_counted(client, pins):
 
 def test_blocked_pin_login_refuses_even_the_right_pin(client, driver):
     driver.handler = PinStore(locked=True)
+    client.set_cookie(auth.PIN_DEVICE_COOKIE, DEVICE_TOKEN)
     response = client.post("/staff/pin", data={"email": STAFF["kitchen"]["email"], "pin": "4321"})
     assert response.status_code == 401 and "For mange feil forsøk" in response.get_data(as_text=True)
     assert driver.handler.succeeded == [] and driver.handler.failed == []
@@ -101,10 +123,58 @@ def test_set_pin_stores_a_hash(driver):
     assert params["hash"] != "4321" and auth.check_password_hash(params["hash"], "4321")
 
 
+class DeviceStore:
+    def __init__(self):
+        self.approved, self.revoked = [], []
+
+    def __call__(self, query, params):
+        if query == devices.APPROVE_QUERY:
+            self.approved.append(params)
+            return [{"id": "d1"}]
+        if query == devices.CHECK_QUERY:
+            ok = self.approved and params["token_hash"] == self.approved[-1]["token_hash"]
+            return [{"device": {"id": "d1", "name": self.approved[-1]["name"]}}] if ok else []
+        if query == devices.LIST_QUERY:
+            return [{"device": {"id": "d1", "name": "Kjøkkennettbrett", "created_at": AT, "last_used_at": None,
+                                "approved_by": "Ingrid"}}]
+        if "DETACH DELETE d" in query:
+            self.revoked.append(params["id"])
+            return [{"done": 1}] if params["id"] == "d1" else []
+        return []
+
+
+def test_admin_approves_this_device(client, driver):
+    store = DeviceStore()
+    log_in_staff(client, driver, "admin", store)
+    html = client.get("/admin/devices").get_data(as_text=True)
+    assert "Kjøkkennettbrett" in html and "Ikke brukt ennå" in html and "Godkjenn denne enheten" in html
+
+    response = client.post("/admin/devices", data={"name": "Kjøkkennettbrett"})
+    cookie = response.headers["Set-Cookie"]
+    assert cookie.startswith(auth.PIN_DEVICE_COOKIE + "=") and "HttpOnly" in cookie and "Max-Age=31536000" in cookie
+    token = cookie.split(";")[0].split("=", 1)[1]
+    [approved] = store.approved
+    assert approved["token_hash"] == auth.device_token_hash(token) and token not in str(approved)
+    assert approved["staff_email"] == STAFF["admin"]["email"]
+    assert "Denne enheten er godkjent: Kjøkkennettbrett." in client.get("/admin/devices").get_data(as_text=True)
+
+    client.post("/admin/devices", data={"name": " "})
+    assert len(store.approved) == 1
+    client.post("/admin/devices/d1/revoke")
+    assert store.revoked == ["d1"]
+    assert client.post("/admin/devices/nope/revoke").status_code == 404
+
+
+def test_only_admins_manage_devices(client, driver):
+    log_in_staff(client, driver, "kitchen", DeviceStore())
+    assert client.get("/admin/devices").status_code == 403
+    assert client.post("/admin/devices", data={"name": "Mitt"}).status_code == 403
+
+
 # --- kitchen and driver screens -------------------------------------------------------
 
 def kitchen_order(seen=None):
-    return {"id": "EM-000001", "guests": 12, "delivery_notes": "Bakdøra", "event_type": LUNCH,
+    return {"id": "EM-000001", "event_time": "11:30", "guests": 12, "delivery_notes": "Bakdøra", "event_type": LUNCH,
             "lines": [{"id": "fish-soup", "name_no": "Fiskesuppe", "name_en": "Fish soup", "quantity": 12}],
             "groups": [{"count": 2, "allergens": [GLUTEN], "diets": [VEGAN]}], "seen": seen}
 
@@ -122,7 +192,7 @@ class ScreenStore:
             self.confirmed.append(params)
             return [{"id": params["order_id"]}] if params["order_id"] == "EM-000001" else []
         if query == kitchen_repo.DRIVER_DAY_QUERY:
-            return [{"order": {"id": "EM-000001", "status": "in_preparation", "guests": 12,
+            return [{"order": {"id": "EM-000001", "status": "in_preparation", "event_time": "11:30", "guests": 12,
                                "delivery_address": "Bryggen 1, Bergen", "delivery_notes": "Bakdøra",
                                "event_type": LUNCH, "customer": {"name": "Kari", "phone": "+4799999999"},
                                "delivered": None}}]
@@ -141,7 +211,7 @@ def test_kitchen_screen_shows_dishes_and_allergies_in_red(client, driver, screen
     log_in_staff(client, driver, "kitchen", screens)
     html = client.get("/kitchen?day=2026-11-20").get_data(as_text=True)
     assert screens.day == "2026-11-20"
-    assert "<strong>12</strong> × Fiskesuppe" in html
+    assert "<strong>12</strong> × Fiskesuppe" in html and '<span class="time">11:30</span>' in html
     assert '<span class="allergy">Gluten</span>' in html and '<span class="diet">Vegansk</span>' in html
     assert "/kitchen/orders/EM-000001/allergies-seen" in html and 'http-equiv="refresh"' in html
     assert "?day=2026-11-19" in html and "?day=2026-11-21" in html
@@ -169,7 +239,7 @@ def test_allergies_seen_is_stored_once_and_shown(client, driver, screens):
 def test_driver_screen_and_delivery(client, driver, screens):
     log_in_staff(client, driver, "driver", screens)
     html = client.get("/driver").get_data(as_text=True)
-    assert "query=Bryggen%201%2C%20Bergen" in html and 'href="tel:+4799999999"' in html
+    assert "query=Bryggen%201%2C%20Bergen" in html and '<span class="time">11:30</span>' in html and 'href="tel:+4799999999"' in html
     client.post("/driver/orders/EM-000001/delivered", data={"day": "2026-11-20"})
     [change] = screens.status_changes
     assert (change["order_id"], change["from_status"], change["to_status"], change["staff_email"]) == \

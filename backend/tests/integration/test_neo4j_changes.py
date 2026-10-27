@@ -34,7 +34,8 @@ def app_ctx():
 
 
 def place(days, guests=10, items=None):
-    details = {"event_date": orders.today() + timedelta(days=days), "delivery_address": "Bryggen 1",
+    details = {"event_date": orders.today() + timedelta(days=days), "event_time": "12:00",
+               "delivery_address": "Bryggen 1",
                "delivery_notes": "", "payment_option": "invoice"}
     return orders_repo.create(EMAIL, "corporate-lunch", guests, items or {"fish-soup": guests}, details,
                               [{"position": 1, "count": 2, "allergens": ["gluten"], "diets": []}])["id"]
@@ -45,7 +46,8 @@ def set_status(order_id, status):
 
 
 def change(order_id, guests, items, groups=()):
-    return orders_repo.change(EMAIL, order_id, {"guests": guests, "items": items, "delivery_notes": "Ny dør",
+    return orders_repo.change(EMAIL, order_id, {"guests": guests, "event_time": "18:15", "items": items,
+                                                "delivery_notes": "Ny dør",
                                                 "groups": list(groups)},
                               orders.CUSTOMER_CHANGEABLE, orders.lock_until())
 
@@ -64,7 +66,7 @@ def test_change_keeps_old_prices_and_replaces_lines_and_groups(app_ctx):
         [("beetroot-salad", 12), ("fish-soup", 12)]
     assert [(g["count"], [d["code"] for d in g["diets"]], g["allergens"]) for g in order["groups"]] == \
         [(3, ["vegan"], [])]
-    assert order["delivery_notes"] == "Ny dør" and order["guests"] == 12
+    assert order["delivery_notes"] == "Ny dør" and order["guests"] == 12 and order["event_time"] == "18:15"
     assert run("MATCH (g:GuestGroup) WHERE NOT (g)<-[:HAS_GROUP]-() RETURN count(g) AS n")[0]["n"] == 0
     last = order["history"][-1]
     assert (last["from_status"], last["to_status"], last["by_role"]) == ("submitted", "submitted", "customer")

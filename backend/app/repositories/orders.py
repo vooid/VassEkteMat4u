@@ -26,7 +26,7 @@ CALL (e) {
 WITH c, e, found WHERE size(found) = size($items) AND size(found) > 0
 CREATE (o:Order {
     id: $order_id, status: 'submitted', payment_status: 'not_paid', payment_option: $payment_option,
-    event_date: date($event_date), guests: $guests, min_guests_at_order: e.min_guests,
+    event_date: date($event_date), event_time: $event_time, guests: $guests, min_guests_at_order: e.min_guests,
     delivery_address: $delivery_address, delivery_notes: $delivery_notes,
     total_nok: reduce(total = 0, x IN found | total + x.quantity * x.food.price_nok), created_at: datetime()
 })
@@ -50,9 +50,9 @@ RETURN o.id AS id, o.total_nok AS total_nok
 
 LIST_QUERY = """
 MATCH (:Customer {email: $email})-[:PLACED]->(o:Order)-[:FOR_EVENT]->(e:EventType)
-RETURN o {.id, .status, .payment_status, .event_date, .guests, .total_nok,
+RETURN o {.id, .status, .payment_status, .event_date, .event_time, .guests, .total_nok,
           event_type: e {.id, .name_no, .name_en}} AS order
-ORDER BY o.event_date, o.created_at
+ORDER BY o.event_date, o.event_time, o.created_at
 """
 
 ORDER_PROJECTION = """
@@ -118,7 +118,7 @@ CALL (o, e, old) {
 WITH c, o, found WHERE size(found) = size($items) AND size(found) > 0
 CALL (o) { MATCH (o)-[old:CONTAINS]->() DELETE old }
 CALL (o) { MATCH (o)-[:HAS_GROUP]->(g:GuestGroup) DETACH DELETE g }
-SET o.guests = $guests, o.delivery_notes = $delivery_notes, o.changed_at = datetime(),
+SET o.guests = $guests, o.event_time = $event_time, o.delivery_notes = $delivery_notes, o.changed_at = datetime(),
     o.total_nok = reduce(total = 0, x IN found | total + x.quantity * x.price)
 CREATE (o)-[:HAD_STATUS]->(:StatusChange {from_status: o.status, to_status: o.status, at: datetime(),
                                           by_role: 'customer', by_id: c.email})
@@ -157,7 +157,7 @@ MATCH (c:Customer)-[:PLACED]->(o:Order {status: 'approved'})-[:FOR_EVENT]->(e:Ev
 WHERE o.reminder_sent_at IS NULL AND date($lock_until) < o.event_date <= date($remind_until)
   AND c.anonymised_at IS NULL
 SET o.reminder_sent_at = datetime()
-RETURN o {.id, .event_date, .guests} AS order, e {.id, .name_no, .name_en} AS event_type,
+RETURN o {.id, .event_date, .event_time, .guests} AS order, e {.id, .name_no, .name_en} AS event_type,
        c {.email, .name, .language} AS customer
 ORDER BY o.event_date
 """
@@ -181,9 +181,9 @@ CALL (o) {
     OPTIONAL MATCH (x:Order {event_date: o.event_date}) WHERE x.status IN $booked_statuses
     RETURN coalesce(sum(x.guests), 0) AS booked
 }
-RETURN o {.id, .status, .payment_status, .payment_option, .event_date, .guests, .total_nok,
+RETURN o {.id, .status, .payment_status, .payment_option, .event_date, .event_time, .guests, .total_nok,
           event_type: e {.id, .name_no, .name_en}, customer: c {.name, .email}, booked_that_day: booked} AS order
-ORDER BY o.event_date, o.created_at
+ORDER BY o.event_date, o.event_time, o.created_at
 LIMIT 500
 """
 
@@ -236,7 +236,8 @@ def create(email: str, event_type_id: str, guests: int, items: dict[str, int], d
     params = {
         "email": email, "event_type_id": event_type_id, "guests": guests,
         "items": [{"dish_id": dish_id, "quantity": qty} for dish_id, qty in items.items()],
-        "event_date": details["event_date"].isoformat(), "payment_option": details["payment_option"],
+        "event_date": details["event_date"].isoformat(), "event_time": details["event_time"],
+        "payment_option": details["payment_option"],
         "delivery_address": details["delivery_address"], "delivery_notes": details["delivery_notes"],
         "groups": groups,
     }
@@ -296,7 +297,7 @@ def change_options(email: str, order_id: str) -> list[dict]:
 
 def change(email: str, order_id: str, change: dict, changeable: tuple[str, ...], lock_until) -> dict | None:
     """Apply a customer's change (US-09). Returns {"id", "status", "total_nok"}, or None if it was refused."""
-    rows = run(CHANGE_QUERY, email=email, order_id=order_id, guests=change["guests"],
+    rows = run(CHANGE_QUERY, email=email, order_id=order_id, guests=change["guests"], event_time=change["event_time"],
                items=[{"dish_id": d, "quantity": q} for d, q in change["items"].items()],
                delivery_notes=change["delivery_notes"], groups=change["groups"], changeable=list(changeable),
                lock_until=lock_until.isoformat())

@@ -5,7 +5,7 @@ from werkzeug.datastructures import MultiDict
 
 from .. import cart, mail, orders
 from ..auth import customer_required
-from ..i18n import format_date, t, t_in, tr
+from ..i18n import format_date, format_event, t, t_in, tr
 from ..repositories import orders as orders_repo
 from ..repositories import questions
 from .cart import load as load_cart
@@ -41,6 +41,7 @@ def checkout():
     return render_template("checkout.html", event_type=event_type, guests=c["guests"], lines=lines,
                            total=cart.total(lines), allergens=allergens, diets=diets, values=values,
                            errors=errors, earliest=orders.earliest_event_date(), latest=orders.latest_event_date(),
+                           earliest_time=orders.EARLIEST_EVENT_TIME, latest_time=orders.LATEST_EVENT_TIME,
                            lock_days=orders.LOCK_DAYS, group_rows=orders.GUEST_GROUP_ROWS,
                            payment_options=orders.PAYMENT_OPTIONS,
                            more_groups_open=any(v for k, v in values.items(multi=True)
@@ -50,7 +51,7 @@ def checkout():
 
 def _send_confirmation(created: dict, event_type: dict, guests: int, details: dict) -> None:
     body = t("confirmation_body", name=current_user.name, id=created["id"], event=tr(event_type, "name"),
-             date=format_date(details["event_date"]), guests=guests, total=created["total_nok"],
+             date=format_event(details["event_date"], details["event_time"]), guests=guests, total=created["total_nok"],
              url=url_for("orders.detail", order_id=created["id"], _external=True))
     mail.send(current_user.email, t("confirmation_subject", id=created["id"]), body)
 
@@ -112,12 +113,14 @@ def change(order_id: str):
     else:
         values = orders.groups_as_form(order["groups"])
         values.add("guests", str(order["guests"]))
+        values.add("event_time", order.get("event_time") or "")
         values.add("delivery_notes", order.get("delivery_notes") or "")
         for line in order["lines"]:
             values.add(f"qty-{line['id']}", str(line["quantity"]))
     for dish in dishes:
         dish["minimum"] = max(order["min_guests_at_order"], dish.get("min_order_qty") or 0)
     return render_template("order_change.html", order=order, dishes=dishes, allergens=allergens, diets=diets,
+                           earliest_time=orders.EARLIEST_EVENT_TIME, latest_time=orders.LATEST_EVENT_TIME,
                            values=values, errors=errors, group_rows=orders.GUEST_GROUP_ROWS,
                            more_groups_open=any(v for k, v in values.items(multi=True)
                                                 if k.startswith("group-") and not k.startswith("group-1-")),

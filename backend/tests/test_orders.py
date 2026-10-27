@@ -21,7 +21,7 @@ CODES = ({"gluten", "nuts"}, {"vegan"})
 
 
 def checkout_form(**overrides):
-    data = {"event_date": (TODAY + timedelta(days=30)).isoformat(), "delivery_address": "Bryggen 1, Bergen",
+    data = {"event_date": (TODAY + timedelta(days=30)).isoformat(), "event_time": "12:00", "delivery_address": "Bryggen 1, Bergen",
             "delivery_notes": "", "payment_option": "invoice"}
     data.update(overrides)
     return MultiDict(data)
@@ -32,7 +32,7 @@ def checkout_form(**overrides):
 def test_valid_form_without_groups():
     details, groups, errors = orders.parse_checkout(checkout_form(), 50, *CODES, on=TODAY)
     assert errors == [] and groups == []
-    assert details["event_date"] == TODAY + timedelta(days=30)
+    assert details["event_date"] == TODAY + timedelta(days=30) and details["event_time"] == "12:00"
     assert details["delivery_address"] == "Bryggen 1, Bergen"
 
 
@@ -43,9 +43,18 @@ def test_event_date_must_be_more_than_five_days_ahead(days, ok):
     assert (errors == []) is ok
 
 
+def test_parse_time():
+    assert orders.parse_time("9:05") == "09:05" and orders.parse_time(" 23:00 ") == "23:00"
+    assert orders.parse_time("24:00") is None and orders.parse_time(None) is None
+
+
 @pytest.mark.parametrize("field,value,key", [
     ("event_date", "", "event_date_invalid"),
     ("event_date", "31.12.2026", "event_date_invalid"),
+    ("event_time", "", "event_time_invalid"),
+    ("event_time", "05:45", "event_time_invalid"),  # before opening hours
+    ("event_time", "23:30", "event_time_invalid"),
+    ("event_time", "12.00", "event_time_invalid"),
     ("delivery_address", "   ", "address_required"),
     ("delivery_notes", "x" * 501, "text_too_long"),
     ("payment_option", "cash", "payment_option_required"),
@@ -160,7 +169,7 @@ def future(days=30):
 
 
 def submit(client, **overrides):
-    data = {"event_date": future(), "delivery_address": "Bryggen 1, Bergen", "delivery_notes": "Bakdøra",
+    data = {"event_date": future(), "event_time": "17:30", "delivery_address": "Bryggen 1, Bergen", "delivery_notes": "Bakdøra",
             "payment_option": "vipps", "group-1-count": "4", "group-1-allergens": "gluten"}
     data.update(overrides)
     return client.post("/order", data=data)
@@ -205,12 +214,13 @@ def test_submit_creates_order_empties_cart_and_sends_confirmation(client, store)
     assert params["items"] == [{"dish_id": "wedding-menu", "quantity": 50}]
     assert params["groups"] == [{"position": 1, "count": 4, "allergens": ["gluten"], "diets": []}]
     assert params["event_date"] == future() and params["payment_option"] == "vipps"
+    assert params["event_time"] == "17:30"
     with client.session_transaction() as s:
         assert "cart" not in s
     assert len(store.outbox) == 1
     mail_sent = store.outbox[0]
     assert mail_sent["recipient"] == EMAIL and order_id in mail_sent["subject"]
-    assert "34750 kr" in mail_sent["body"] and f"/orders/{order_id}" in mail_sent["body"]
+    assert "kl. 17:30" in mail_sent["body"] and "34750 kr" in mail_sent["body"] and f"/orders/{order_id}" in mail_sent["body"]
 
 
 def test_submit_twice_does_not_create_two_orders(client, store):

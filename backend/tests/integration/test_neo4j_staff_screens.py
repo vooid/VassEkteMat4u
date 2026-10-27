@@ -7,7 +7,7 @@ import pytest
 
 from app import auth, create_app, orders
 from app.db import run
-from app.repositories import customers, kitchen, questions, staff
+from app.repositories import customers, devices, kitchen, questions, staff
 from app.repositories import orders as orders_repo
 from scripts.seed import seed
 
@@ -24,7 +24,8 @@ OPTIONAL MATCH (o)-[:HAS_GROUP|HAD_STATUS]->(x)
 OPTIONAL MATCH (c)-[:ASKED]->(q:Question)
 OPTIONAL MATCH (a:Answer)-[:ANSWERS]->(q)
 OPTIONAL MATCH (s:Staff) WHERE s.email IN [$cook, $admin]
-DETACH DELETE x, o, a, q, c, s
+OPTIONAL MATCH (s)-[:APPROVED_DEVICE]->(d:PinDevice)
+DETACH DELETE x, o, a, q, c, d, s
 """
 
 
@@ -40,8 +41,8 @@ def app_ctx():
         run(CLEANUP, customer=CUSTOMER, cook=COOK, admin=ADMIN)
 
 
-def place(groups=()):
-    details = {"event_date": DAY, "delivery_address": "Bryggen 1", "delivery_notes": "Bakdøra",
+def place(groups=(), time="12:00"):
+    details = {"event_date": DAY, "event_time": time, "delivery_address": "Bryggen 1", "delivery_notes": "Bakdøra",
                "payment_option": "invoice"}
     return orders_repo.create(CUSTOMER, "corporate-lunch", 10, {"fish-soup": 10}, details, list(groups))["id"]
 
@@ -107,3 +108,23 @@ def test_driver_day_and_delivery(app_ctx):
     [o] = kitchen.driver_day(DAY)
     assert o["status"] == "delivered" and o["delivered"]["by"] == "Cook"
     assert kitchen.kitchen_day(DAY) == []
+
+
+def test_kitchen_and_driver_sort_by_event_time(app_ctx):
+    late, early = place(time="18:00"), place(time="09:30")
+    release(late)
+    release(early)
+    assert [o["id"] for o in kitchen.kitchen_day(DAY)] == [early, late]
+    assert [o["event_time"] for o in kitchen.driver_day(DAY)] == ["09:30", "18:00"]
+
+
+def test_pin_devices(app_ctx):
+    token, token_hash = auth.new_device_token()
+    device_id = devices.approve("Kjøkkennettbrett", token_hash, ADMIN)
+    assert devices.find(auth.device_token_hash("wrong")) is None
+    assert devices.find(token_hash)["name"] == "Kjøkkennettbrett"
+    [listed] = [d for d in devices.list_all() if d["id"] == device_id]
+    assert listed["approved_by"] == "Admin" and listed["last_used_at"] is None
+    devices.find(token_hash, touch=True)
+    assert [d for d in devices.list_all() if d["id"] == device_id][0]["last_used_at"] is not None
+    assert devices.revoke(device_id) and devices.find(token_hash) is None

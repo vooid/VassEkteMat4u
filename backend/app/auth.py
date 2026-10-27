@@ -3,14 +3,16 @@
 Basic login only: no password reset by e-mail in this version (decision 2026-10-27). Customers and staff are separate
 node labels with separate login pages, so customer self-registration can never create an admin (data_model.md).
 """
+import hashlib
 import re
+import secrets
 from functools import wraps
 
 from flask import Flask, abort, jsonify, redirect, request, url_for
 from flask_login import LoginManager, UserMixin, current_user
 from werkzeug.security import check_password_hash, generate_password_hash
 
-from .repositories import customers, staff
+from .repositories import customers, devices, staff
 
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 MIN_PASSWORD_LENGTH = 8
@@ -22,6 +24,10 @@ PIN_ROLES = ("kitchen", "driver")
 PIN_RE = re.compile(r"^\d{4,8}$")
 MAX_PIN_ATTEMPTS = 5
 PIN_LOCK_MINUTES = 15
+# PIN login only works on devices an admin has approved (the kitchen tablet, the drivers' phones): the approval is a
+# random token in a long-lived cookie. An IP allow-list wouldn't do, because drivers are on mobile data.
+PIN_DEVICE_COOKIE = "ektemat_pin_device"
+PIN_DEVICE_DAYS = 365
 # Where each role lands after logging in.
 HOME_ENDPOINTS = {"admin": "admin.order_list", "kitchen": "kitchen.index", "driver": "driver.index"}
 # Checked when the e-mail doesn't exist, so a failed login takes as long whether or not the account exists.
@@ -127,6 +133,22 @@ def authenticate_pin(email: str, pin: str) -> tuple[Staff | None, bool]:
         return Staff(data), False
     staff.pin_failed(email, MAX_PIN_ATTEMPTS, PIN_LOCK_MINUTES)
     return None, False
+
+
+def new_device_token() -> tuple[str, str]:
+    """(token for the cookie, hash for the database)."""
+    token = secrets.token_urlsafe(32)
+    return token, device_token_hash(token)
+
+
+def device_token_hash(token: str) -> str:
+    return hashlib.sha256(token.encode()).hexdigest()
+
+
+def pin_device(touch: bool = False) -> dict | None:
+    """The approved device this request comes from, or None."""
+    token = request.cookies.get(PIN_DEVICE_COOKIE)
+    return devices.find(device_token_hash(token), touch) if token else None
 
 
 def home_endpoint(member: Staff) -> str:

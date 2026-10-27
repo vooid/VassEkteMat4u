@@ -3,7 +3,7 @@
   <h2>{{ t("event_details") }}</h2>
   <dl class="facts">
     <dt>{{ t("event_type") }}</dt><dd>{{ tr(order.event_type, "name") }}</dd>
-    <dt>{{ t("event_date") }}</dt><dd>{{ format_date(order.event_date) }}</dd>
+    <dt>{{ t("event_date") }}</dt><dd>{{ format_event(order.event_date, order.event_time) }}</dd>
     <dt>{{ t("guests") }}</dt><dd>{{ order.guests }} <span class="hint">({{ t("min_guests_at_order", n=order.min_guests_at_order) }})</span></dd>
     <dt>{{ t("delivery_address") }}</dt><dd class="pre">{{ order.delivery_address }}</dd>
     {% if order.delivery_notes %}<dt>{{ t("delivery_notes") }}</dt><dd class="pre">{{ order.delivery_notes }}</dd>{% endif %}

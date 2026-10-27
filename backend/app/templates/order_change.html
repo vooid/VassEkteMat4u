@@ -23,6 +23,12 @@
   <fieldset class="panel">
     <legend>{{ tr(order.event_type, "name") }} · {{ format_date(order.event_date) }}</legend>
     <div class="field">
+      <label for="event_time">{{ t("event_time") }}</label>
+      <input id="event_time" name="event_time" type="time" required min="{{ earliest_time }}" max="{{ latest_time }}"
+             step="900" value="{{ values.get('event_time', '') }}" aria-describedby="event-time-hint">
+    </div>
+    <p class="hint" id="event-time-hint">{{ t("event_time_hint") }}</p>
+    <div class="field">
       <label for="guests">{{ t("number_of_guests") }}</label>
       <input id="guests" name="guests" type="number" inputmode="numeric" min="{{ order.min_guests_at_order }}"
              max="9999" required value="{{ values.get('guests', '') }}" aria-describedby="guests-hint">

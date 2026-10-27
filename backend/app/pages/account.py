@@ -90,9 +90,12 @@ def _staff_logged_in(member: auth.Staff):
 
 @bp.route("/staff/pin", methods=["GET", "POST"])
 def pin_login():
-    """PIN login for the kitchen tablet and drivers' phones (US-27): pick your name, type your PIN."""
+    """PIN login for the kitchen tablet and drivers' phones (US-27): pick your name, type your PIN.
+    Only on devices an admin has approved (/admin/devices); elsewhere staff use the password login."""
     if current_user.is_authenticated and current_user.is_staff:
         return redirect(url_for(auth.home_endpoint(current_user)))
+    if auth.pin_device(touch=request.method == "POST") is None:
+        return render_template("pin_login.html", device_ok=False, next=request.args.get("next", "")), 403
     error = None
     chosen = ""
     if request.method == "POST":
@@ -101,7 +104,7 @@ def pin_login():
         if member:
             return _staff_logged_in(member)
         error = "pin_blocked" if blocked else "pin_failed"
-    return render_template("pin_login.html", users=staff_repo.pin_users(auth.PIN_ROLES), chosen=chosen,
+    return render_template("pin_login.html", device_ok=True, users=staff_repo.pin_users(auth.PIN_ROLES), chosen=chosen,
                            error=error, lock_minutes=auth.PIN_LOCK_MINUTES,
                            next=request.args.get("next", "")), (401 if error else 200)
 

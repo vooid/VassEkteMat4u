@@ -22,7 +22,7 @@ CODES = ({"gluten"}, {"vegan"})
 
 def make_order(status="approved", days=30, on=None):
     return {"id": "EM-000001", "status": status, "payment_status": "not_paid", "payment_option": "invoice",
-            "event_date": (on or orders.today()) + timedelta(days=days), "guests": 12, "min_guests_at_order": 8,
+            "event_date": (on or orders.today()) + timedelta(days=days), "event_time": "12:00", "guests": 12, "min_guests_at_order": 8,
             "total_nok": 2268, "event_type": LUNCH, "delivery_address": "Bryggen 1", "delivery_notes": "Bakdøra",
             "lines": [{**SOUP, "quantity": 12, "unit_price_nok": 189, "line_total": 2268}],
             "groups": [{"position": 1, "count": 2, "allergens": ALLERGENS, "diets": []}],
@@ -47,7 +47,7 @@ def test_last_change_date_is_six_days_before():
 
 
 def change_form(**overrides):
-    data = {"guests": "12", "qty-fish-soup": "12", "qty-beetroot-salad": "", "delivery_notes": "Bakdøra"}
+    data = {"guests": "12", "event_time": "11:30", "qty-fish-soup": "12", "qty-beetroot-salad": "", "delivery_notes": "Bakdøra"}
     data.update(overrides)
     return MultiDict(data)
 
@@ -57,11 +57,12 @@ def test_parse_change():
                                                         "group-1-diets": "vegan"}),
                                          make_order(), [SOUP, SALAD], *CODES)
     assert errors == []
-    assert parsed == {"guests": 12, "items": {"fish-soup": 12, "beetroot-salad": 10}, "delivery_notes": "Bakdøra",
+    assert parsed == {"guests": 12, "event_time": "11:30", "items": {"fish-soup": 12, "beetroot-salad": 10}, "delivery_notes": "Bakdøra",
                       "groups": [{"position": 1, "count": 2, "allergens": [], "diets": ["vegan"]}]}
 
 
 @pytest.mark.parametrize("overrides,key", [
+    ({"event_time": ""}, "event_time_invalid"),
     ({"guests": "7"}, "guests_below_saved_minimum"),  # saved minimum 8
     ({"guests": ""}, "guests_missing"),
     ({"qty-fish-soup": "9"}, "dish_below_minimum"),  # the dish's own minimum is 10
@@ -148,14 +149,15 @@ def test_change_form_is_filled_in(client, store):
     assert 'name="guests"' in html and 'value="12"' in html
     assert 'name="qty-fish-soup"' in html and 'name="qty-beetroot-salad"' in html
     assert re.search(r'name="group-1-allergens" value="gluten"\s+checked', html)  # saved guest group
+    assert 'name="event_time"' in html and 'value="12:00"' in html
 
 
 def test_change_approved_order_saves_and_tells_admin(client, store):
-    res = client.post("/orders/EM-000001/change", data={"guests": "14", "qty-fish-soup": "14",
+    res = client.post("/orders/EM-000001/change", data={"event_time": "12:00", "guests": "14", "qty-fish-soup": "14",
                                                         "qty-beetroot-salad": "8", "delivery_notes": "Ny dør"})
     assert res.headers["Location"] == "/orders/EM-000001"
     params = store.changes[0]
-    assert params["guests"] == 14 and params["delivery_notes"] == "Ny dør"
+    assert params["guests"] == 14 and params["delivery_notes"] == "Ny dør" and params["event_time"] == "12:00"
     assert params["items"] == [{"dish_id": "fish-soup", "quantity": 14}, {"dish_id": "beetroot-salad", "quantity": 8}]
     assert params["lock_until"] == (orders.today() + timedelta(days=5)).isoformat()
     assert [m["recipient"] for m in store.outbox] == ["ingrid@ektemat.test"]
@@ -165,12 +167,12 @@ def test_change_approved_order_saves_and_tells_admin(client, store):
 
 def test_change_submitted_order_does_not_e_mail_admin(client, store):
     store.order = make_order("submitted")
-    client.post("/orders/EM-000001/change", data={"guests": "12", "qty-fish-soup": "12"})
+    client.post("/orders/EM-000001/change", data={"event_time": "12:00", "guests": "12", "qty-fish-soup": "12"})
     assert len(store.changes) == 1 and store.outbox == []
 
 
 def test_invalid_change_shows_errors(client, store):
-    res = client.post("/orders/EM-000001/change", data={"guests": "7", "qty-fish-soup": "9"})
+    res = client.post("/orders/EM-000001/change", data={"event_time": "12:00", "guests": "7", "qty-fish-soup": "9"})
     html = res.get_data(as_text=True)
     assert res.status_code == 400 and store.changes == []
     assert "minst 8 gjester" in html and "Fiskesuppe: minst 10 porsjoner." in html
@@ -188,7 +190,7 @@ def test_locked_order_cannot_be_changed_or_cancelled(client, store):
 
 def test_database_refusal_is_reported(client, store):
     store.refuse = True  # e.g. the job locked it a second ago, or a dish was removed from the menu
-    client.post("/orders/EM-000001/change", data={"guests": "12", "qty-fish-soup": "12"})
+    client.post("/orders/EM-000001/change", data={"event_time": "12:00", "guests": "12", "qty-fish-soup": "12"})
     with client.session_transaction() as s:
         assert "kan ikke endres lenger" in s["_flashes"][-1][1]
     assert store.outbox == []

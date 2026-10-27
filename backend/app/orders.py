@@ -16,6 +16,9 @@ REMINDER_DAYS = 7  # reminder e-mail this many days before the event (basic_desc
 MAX_DAYS_AHEAD = 730
 MAX_TEXT_LENGTH = 500
 MAX_QUESTION_LENGTH = 2000
+# When the food should be ready (US-30: the driver plans by it). Assumed opening hours; confirm with Ingrid.
+EARLIEST_EVENT_TIME = "06:00"
+LATEST_EVENT_TIME = "23:00"
 GUEST_GROUP_ROWS = 5  # rows on the checkout form
 
 PAYMENT_OPTIONS = ("invoice", "vipps", "bank_transfer")
@@ -88,6 +91,15 @@ def parse_date(value) -> date | None:
         return None
 
 
+def parse_time(value) -> str | None:
+    """"HH:MM" (what <input type="time"> sends) within the opening hours, or None."""
+    try:
+        t = datetime.strptime(str(value).strip(), "%H:%M").strftime("%H:%M")
+    except ValueError:
+        return None
+    return t if EARLIEST_EVENT_TIME <= t <= LATEST_EVENT_TIME else None
+
+
 def _parse_count(value) -> int | None:
     try:
         n = int(str(value).strip())
@@ -104,6 +116,7 @@ def parse_checkout(form, guests: int, allergen_codes: set[str], diet_codes: set[
     errors = []
     details = {
         "event_date": parse_date(form.get("event_date", "")),
+        "event_time": parse_time(form.get("event_time", "")),
         "delivery_address": form.get("delivery_address", "").strip(),
         "delivery_notes": form.get("delivery_notes", "").strip(),
         "payment_option": form.get("payment_option", ""),
@@ -116,6 +129,8 @@ def parse_checkout(form, guests: int, allergen_codes: set[str], diet_codes: set[
         errors.append(("event_date_too_soon", {"days": LOCK_DAYS, "date": earliest_event_date(on)}))
     elif event_date > latest_event_date(on):
         errors.append(("event_date_too_far", {}))
+    if details["event_time"] is None:
+        errors.append(("event_time_invalid", {"earliest": EARLIEST_EVENT_TIME, "latest": LATEST_EVENT_TIME}))
     if not details["delivery_address"]:
         errors.append(("address_required", {}))
     if max(len(details["delivery_address"]), len(details["delivery_notes"])) > MAX_TEXT_LENGTH:
@@ -210,7 +225,7 @@ def capacity(booked_guests: int, wedding_booked: bool, order: dict) -> dict:
 def parse_change(form, order: dict, dishes: list[dict], allergen_codes: set[str],
                  diet_codes: set[str]) -> tuple[dict, list[tuple[str, dict]]]:
     """Read the change form (US-09). `dishes` are the ones the customer may choose (repositories/orders.py
-    `change_options`). Returns ({guests, items, delivery_notes, groups}, errors).
+    `change_options`). Returns ({guests, event_time, items, delivery_notes, groups}, errors).
 
     The minimums are the ones saved on the order, not the event type's current minimum (US-06, US-09).
     """
@@ -238,12 +253,16 @@ def parse_change(form, order: dict, dishes: list[dict], allergen_codes: set[str]
     if not items and not any(k == "dish_below_minimum" for k, _ in errors):
         errors.append(("order_needs_a_dish", {}))
 
+    event_time = parse_time(form.get("event_time", ""))
+    if event_time is None:
+        errors.append(("event_time_invalid", {"earliest": EARLIEST_EVENT_TIME, "latest": LATEST_EVENT_TIME}))
     notes = form.get("delivery_notes", "").strip()
     if len(notes) > MAX_TEXT_LENGTH:
         errors.append(("text_too_long", {"max": MAX_TEXT_LENGTH}))
     groups, group_errors = parse_guest_groups(form, guests or 0, allergen_codes, diet_codes)
     errors.extend(group_errors)
-    return {"guests": guests, "items": items, "delivery_notes": notes, "groups": groups}, errors
+    return {"guests": guests, "event_time": event_time, "items": items, "delivery_notes": notes,
+            "groups": groups}, errors
 
 
 def question_error(text: str) -> str | None:

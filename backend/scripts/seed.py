@@ -79,6 +79,7 @@ CONSTRAINTS = [
     "CREATE CONSTRAINT allergen_code IF NOT EXISTS FOR (a:Allergen) REQUIRE a.code IS UNIQUE",
     "CREATE CONSTRAINT diet_code IF NOT EXISTS FOR (d:Diet) REQUIRE d.code IS UNIQUE",
     "CREATE CONSTRAINT image_id IF NOT EXISTS FOR (i:Image) REQUIRE i.id IS UNIQUE",
+    "CREATE CONSTRAINT pin_device_token IF NOT EXISTS FOR (d:PinDevice) REQUIRE d.token_hash IS UNIQUE",
     # Not a constraint, but created the same way: the admin list and the kitchen and driver screens filter on these.
     "CREATE INDEX order_status_date IF NOT EXISTS FOR (o:Order) ON (o.status, o.event_date)",
 ]

@@ -4,7 +4,9 @@
 <div class="form-page">
   <h1>{{ t("pin_login") }}</h1>
   {% if error %}<p class="flash flash-error" role="alert">{{ t(error, minutes=lock_minutes) }}</p>{% endif %}
-  {% if users %}
+  {% if not device_ok %}
+  <p class="flash flash-warning" role="alert">{{ t("device_not_approved") }}</p>
+  {% elif users %}
   <form method="post" action="{{ url_for('account.pin_login', next=next or None) }}" class="stack">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <label for="email">{{ t("who_are_you") }}</label>

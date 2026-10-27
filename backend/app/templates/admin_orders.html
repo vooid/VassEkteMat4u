@@ -38,7 +38,7 @@
   <tbody>
     {% for o in rows %}
     <tr>
-      <td>{{ format_date(o.event_date) }}</td>
+      <td>{{ format_event(o.event_date, o.event_time) }}</td>
       <td><a href="{{ url_for('admin.order_detail', order_id=o.id) }}">{{ o.id }}</a></td>
       <td>{{ o.customer.name }}<div class="hint">{{ o.customer.email }}</div></td>
       <td>{{ tr(o.event_type, "name") }}</td>

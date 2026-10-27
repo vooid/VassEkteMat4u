@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}{{ t("devices_heading") }} – Ekte Mat{% endblock %}
+{% block content %}
+<h1>{{ t("devices_heading") }}</h1>
+<p class="lead">{{ t("devices_intro") }}</p>
+
+<section class="panel">
+  {% if this_device %}
+  <p class="seen">✓ {{ t("this_device_approved", name=this_device.name) }}</p>
+  {% else %}
+  <form method="post" action="{{ url_for('admin.approve_device') }}" class="stack">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label for="name">{{ t("device_name") }}</label>
+    <input id="name" name="name" required maxlength="60" aria-describedby="name-hint">
+    <p class="hint" id="name-hint">{{ t("device_name_hint") }}</p>
+    <button type="submit">{{ t("approve_this_device") }}</button>
+  </form>
+  {% endif %}
+</section>
+
+{% for d in devices %}
+<article class="panel device">
+  <h2>{{ d.name }}{% if this_device and this_device.id == d.id %} <span class="pill">✓</span>{% endif %}</h2>
+  <p class="hint">{{ t("approved_by", by=d.approved_by or "–", at=format_datetime(d.created_at)) }} ·
+    {{ t("last_used", at=format_datetime(d.last_used_at)) if d.last_used_at else t("never_used") }}</p>
+  <form method="post" action="{{ url_for('admin.revoke_device', device_id=d.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button type="submit" class="danger">{{ t("revoke") }}</button>
+  </form>
+</article>
+{% else %}
+<p class="empty">{{ t("no_devices") }}</p>
+{% endfor %}
+{% endblock %}

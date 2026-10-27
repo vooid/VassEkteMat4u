@@ -9,7 +9,7 @@
 
 {% for o in rows %}
 <article class="panel screen-order" id="order-{{ o.id }}">
-  <h2>{{ tr(o.event_type, "name") }} · {{ t("guests_n", n=o.guests) }} <span class="hint">#{{ o.id }}</span></h2>
+  <h2>{% if o.event_time %}<span class="time">{{ o.event_time }}</span> {% endif %}{{ tr(o.event_type, "name") }} · {{ t("guests_n", n=o.guests) }} <span class="hint">#{{ o.id }}</span></h2>
   <ul class="plain-list dish-list">
     {% for line in o.lines %}<li><strong>{{ line.quantity }}</strong> × {{ tr(line, "name") }}</li>{% endfor %}
   </ul>

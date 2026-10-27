@@ -16,6 +16,7 @@
         <a href="{{ url_for('admin.order_list') }}">{{ t("admin_orders") }}</a>
         <a href="{{ url_for('admin.question_list') }}">{{ t("questions") }}</a>
         <a href="{{ url_for('admin.event_type_list') }}">{{ t("event_types") }}</a>
+        <a href="{{ url_for('admin.device_list') }}">{{ t("devices") }}</a>
         {% endif %}
         {% if current_user.role in ("admin", "kitchen") %}<a href="{{ url_for('kitchen.index') }}">{{ t("kitchen") }}</a>{% endif %}
         {% if current_user.role in ("admin", "driver") %}<a href="{{ url_for('driver.index') }}">{{ t("driver") }}</a>{% endif %}
