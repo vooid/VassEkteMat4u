@@ -1,8 +1,9 @@
 """Ekte Mat backend: Flask app factory."""
 from flask import Flask
 
-from . import db
+from . import db, i18n
 from .config import Config
+from .pages.menu import bp as menu_page_bp
 from .routes.event_types import bp as event_types_bp
 from .routes.health import bp as health_bp
 
@@ -14,6 +15,8 @@ def create_app(config: dict | None = None) -> Flask:
         app.config.update(config)
 
     db.init_app(app)
+    i18n.init_app(app)
+    app.register_blueprint(menu_page_bp)
     app.register_blueprint(health_bp, url_prefix="/api")
     app.register_blueprint(event_types_bp, url_prefix="/api/event-types")
     return app

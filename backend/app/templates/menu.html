@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>{{ t("menu_heading") }}</h1>
+<p class="lead">{{ t("menu_intro") }}</p>
+
+<nav class="event-nav" aria-label="{{ t('menu_heading') }}">
+  {% for e in event_types %}
+    <a href="#{{ e.id }}">{{ tr(e, "name") }}</a>
+  {% endfor %}
+</nav>
+
+{% for e in event_types %}
+<section class="event-type" id="{{ e.id }}" aria-labelledby="{{ e.id }}-heading">
+  <div class="event-type-head">
+    <h2 id="{{ e.id }}-heading">{{ tr(e, "name") }}</h2>
+    <span class="pill">{{ t("min_guests", n=e.min_guests) }}</span>
+  </div>
+  {% if e["items"] %}
+  <ul class="cards">
+    {% for item in e["items"] %}
+    <li class="card">
+      {% if item.image %}
+        <img class="card-img" src="{{ item.image }}" alt="{{ tr(item, 'name') }}" loading="lazy">
+      {% else %}
+        <div class="card-img placeholder" aria-hidden="true"><span>{{ t("no_image") }}</span></div>
+      {% endif %}
+      <div class="card-body">
+        <h3>{{ tr(item, "name") }}</h3>
+        <p class="desc">{{ tr(item, "description") }}</p>
+        <p class="price"><strong>{{ item.price_nok }}</strong> {{ t("per_person") }}</p>
+        <p class="minimum">{{ t("minimum_order", n=item.minimum) }}</p>
+        {% if item.diets %}
+        <ul class="tags diets">
+          {% for d in item.diets %}<li>{{ tr(d, "name") }}</li>{% endfor %}
+        </ul>
+        {% endif %}
+        <p class="allergens">
+          {% if item.allergens %}
+            <span class="label">{{ t("allergens") }}:</span>
+            {% for a in item.allergens %}{{ tr(a, "name") }}{% if not loop.last %}, {% endif %}{% endfor %}
+          {% else %}
+            {{ t("no_allergens") }}
+          {% endif %}
+        </p>
+      </div>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="empty">{{ t("no_items") }}</p>
+  {% endif %}
+</section>
+{% endfor %}
+{% endblock %}
