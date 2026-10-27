@@ -7,6 +7,8 @@ from .config import Config
 from .pages.account import bp as account_page_bp
 from .pages.admin import bp as admin_page_bp
 from .pages.cart import bp as cart_page_bp
+from .pages.kitchen import driver_bp as driver_page_bp
+from .pages.kitchen import kitchen_bp as kitchen_page_bp
 from .pages.menu import bp as menu_page_bp
 from .pages.orders import bp as orders_page_bp
 from .pages.outbox import bp as outbox_page_bp
@@ -29,6 +31,8 @@ def create_app(config: dict | None = None) -> Flask:
     app.register_blueprint(account_page_bp)
     app.register_blueprint(orders_page_bp)
     app.register_blueprint(admin_page_bp)
+    app.register_blueprint(kitchen_page_bp)
+    app.register_blueprint(driver_page_bp)
     if app.config["DEV_OUTBOX"]:
         app.register_blueprint(outbox_page_bp)
     app.context_processor(lambda: {"cart_count": cart.item_count()})

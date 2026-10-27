@@ -26,6 +26,24 @@ def create_staff(email: str, name: str, role: str, password: str) -> None:
     click.echo(f"Created {role} account for {email}.")
 
 
+@click.command("set-pin")
+@click.argument("email")
+@click.option("--pin", prompt=True, hide_input=True, confirmation_prompt=True, help="4–8 digits. Asked for if left out.")
+@with_appcontext
+def set_pin(email: str, pin: str) -> None:
+    """Set the PIN a kitchen or driver staff member uses on the PIN login page."""
+    email = auth.normalise_email(email)
+    member = staff.get(email)
+    if member is None:
+        raise click.ClickException(f"No staff account for {email}.")
+    if member["role"] not in auth.PIN_ROLES:
+        raise click.ClickException(f"Only {' and '.join(auth.PIN_ROLES)} staff can use a PIN; admins use a password.")
+    if not auth.PIN_RE.match(pin):
+        raise click.ClickException("The PIN must be 4–8 digits.")
+    staff.set_pin(email, auth.hash_password(pin))
+    click.echo(f"PIN set for {email}.")
+
+
 @click.command("run-daily-jobs")
 @click.option("--date", "on", help="Run as if today were YYYY-MM-DD (for testing). Default: today in Norway.")
 @with_appcontext
@@ -41,4 +59,5 @@ def run_daily_jobs(on: str | None) -> None:
 
 def init_app(app: Flask) -> None:
     app.cli.add_command(create_staff)
+    app.cli.add_command(set_pin)
     app.cli.add_command(run_daily_jobs)

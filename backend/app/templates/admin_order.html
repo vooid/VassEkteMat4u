@@ -76,5 +76,12 @@
   </dl>
 </section>
 
+{% include "_questions.html" %}
+
+{% if order.groups %}
+<p class="flash {{ 'flash-success' if allergies_seen else 'flash-warning' }}">
+  {% if allergies_seen %}{{ t("allergies_seen_by", by=allergies_seen.by, at=format_datetime(allergies_seen.at)) }}
+  {% else %}{{ t("allergies_not_seen") }}{% endif %}</p>
+{% endif %}
 {% include "_order_details.html" %}
 {% endblock %}

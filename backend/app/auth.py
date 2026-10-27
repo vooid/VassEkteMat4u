@@ -16,6 +16,14 @@ EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 MIN_PASSWORD_LENGTH = 8
 MAX_PASSWORD_LENGTH = 128
 STAFF_ROLES = ("admin", "kitchen", "driver")
+# Kitchen and driver staff may log in with a short PIN (Mateo: no long passwords with flour on your hands).
+# Admins always use their password: they can change orders and minimums.
+PIN_ROLES = ("kitchen", "driver")
+PIN_RE = re.compile(r"^\d{4,8}$")
+MAX_PIN_ATTEMPTS = 5
+PIN_LOCK_MINUTES = 15
+# Where each role lands after logging in.
+HOME_ENDPOINTS = {"admin": "admin.order_list", "kitchen": "kitchen.index", "driver": "driver.index"}
 # Checked when the e-mail doesn't exist, so a failed login takes as long whether or not the account exists.
 _DUMMY_HASH = generate_password_hash("not-a-real-password")
 
@@ -103,6 +111,26 @@ def authenticate(email: str, password: str) -> Customer | None:
 def authenticate_staff(email: str, password: str) -> Staff | None:
     data = staff.get_with_hash(email)
     return Staff(data) if _password_matches(data, password) else None
+
+
+def authenticate_pin(email: str, pin: str) -> tuple[Staff | None, bool]:
+    """(staff member or None, blocked). A short PIN is easy to guess, so after MAX_PIN_ATTEMPTS wrong PINs in a row
+    that account's PIN login is blocked for PIN_LOCK_MINUTES."""
+    data = staff.get_with_pin(email, PIN_ROLES)
+    if data is None:
+        check_password_hash(_DUMMY_HASH, pin)
+        return None, False
+    if data["locked"]:
+        return None, True
+    if check_password_hash(data["pin_hash"], pin):
+        staff.pin_succeeded(email)
+        return Staff(data), False
+    staff.pin_failed(email, MAX_PIN_ATTEMPTS, PIN_LOCK_MINUTES)
+    return None, False
+
+
+def home_endpoint(member: Staff) -> str:
+    return HOME_ENDPOINTS.get(member.role, "menu.index")
 
 
 def customer_required(view):

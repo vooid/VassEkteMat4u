@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}{{ t("pin_login") }} – Ekte Mat{% endblock %}
+{% block content %}
+<div class="form-page">
+  <h1>{{ t("pin_login") }}</h1>
+  {% if error %}<p class="flash flash-error" role="alert">{{ t(error, minutes=lock_minutes) }}</p>{% endif %}
+  {% if users %}
+  <form method="post" action="{{ url_for('account.pin_login', next=next or None) }}" class="stack">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label for="email">{{ t("who_are_you") }}</label>
+    <select id="email" name="email" required>
+      <option value="">{{ t("choose") }}</option>
+      {% for u in users %}
+      <option value="{{ u.email }}" {% if u.email == chosen %}selected{% endif %}>{{ u.name }} ({{ t(u.role) }})</option>
+      {% endfor %}
+    </select>
+    <label for="pin">{{ t("pin") }}</label>
+    <input id="pin" name="pin" type="password" inputmode="numeric" pattern="[0-9]{4,8}" minlength="4" maxlength="8"
+           autocomplete="off" required>
+    <button type="submit">{{ t("log_in") }}</button>
+  </form>
+  {% else %}
+  <p class="hint">{{ t("no_pin_users") }}</p>
+  {% endif %}
+  <p class="hint">{{ t("pin_login_hint") }}</p>
+  <p><a href="{{ url_for('account.staff_login', next=next or None) }}">{{ t("password_login_link") }}</a></p>
+</div>
+{% endblock %}

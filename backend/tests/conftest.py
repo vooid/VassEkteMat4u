@@ -43,7 +43,8 @@ def client(driver):
 
 
 STAFF = {"admin": {"email": "admin@ektemat.test", "name": "Ingrid", "role": "admin"},
-         "kitchen": {"email": "kjokken@ektemat.test", "name": "Mateo", "role": "kitchen"}}
+         "kitchen": {"email": "kjokken@ektemat.test", "name": "Mateo", "role": "kitchen"},
+         "driver": {"email": "sjafor@ektemat.test", "name": "Ola", "role": "driver"}}
 
 
 def log_in_staff(client, driver, role="admin", fallback=None):
@@ -52,7 +53,7 @@ def log_in_staff(client, driver, role="admin", fallback=None):
     member = STAFF[role]
 
     def handler(query, params):
-        if "MATCH (s:Staff" in query and "SET o." not in query:
+        if "MATCH (s:Staff {email: $email}) RETURN" in query:
             return [{"s": member}] if params.get("email") == member["email"] else []
         return fallback(query, params) if fallback else driver.rows
     driver.handler = handler

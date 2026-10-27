@@ -1,4 +1,4 @@
-"""Checkout (US-07), the customer's orders (US-08), changing (US-09) and cancelling (US-10)."""
+"""Checkout (US-07), the customer's orders (US-08), changing (US-09), cancelling (US-10) and questions (US-12)."""
 from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
 from flask_login import current_user
 from werkzeug.datastructures import MultiDict
@@ -7,6 +7,7 @@ from .. import cart, mail, orders
 from ..auth import customer_required
 from ..i18n import format_date, t, t_in, tr
 from ..repositories import orders as orders_repo
+from ..repositories import questions
 from .cart import load as load_cart
 
 bp = Blueprint("orders", __name__)
@@ -68,6 +69,8 @@ def detail(order_id: str):
     if order is None:
         abort(404)
     return render_template("order.html", order=order, read_only=order["status"] in orders.PAST_STATUSES,
+                           questions=questions.for_order(order_id, current_user.email),
+                           max_question=orders.MAX_QUESTION_LENGTH,
                            can_change=orders.customer_can_change(order),
                            last_change_date=orders.last_change_date(order["event_date"]), lock_days=orders.LOCK_DAYS)
 
@@ -141,6 +144,25 @@ def cancel(order_id: str):
                 url=url_for("orders.detail", order_id=order_id, _external=True)))
     flash(t("order_cancelled", id=order_id), "success")
     return redirect(url_for("orders.detail", order_id=order_id))
+
+
+@bp.post("/orders/<order_id>/questions")
+@customer_required
+def ask(order_id: str):
+    """US-12: a question about the order, on any status. The admins get an e-mail."""
+    order = orders_repo.get_for_customer(current_user.email, order_id)
+    if order is None:
+        abort(404)
+    text = request.form.get("text", "").strip()
+    error = orders.question_error(text)
+    if error:
+        flash(t(error, max=orders.MAX_QUESTION_LENGTH), "error")
+    elif questions.ask(current_user.email, order_id, text) is None:
+        abort(404)
+    else:
+        _notify_admins("mail_admin_question", order, text=text)
+        flash(t("question_sent"), "success")
+    return redirect(url_for("orders.detail", order_id=order_id, _anchor="questions"))
 
 
 def _notify_admins(key: str, order: dict, **kwargs) -> None:

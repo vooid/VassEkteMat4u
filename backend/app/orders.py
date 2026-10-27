@@ -15,6 +15,7 @@ LOCK_DAYS = 5
 REMINDER_DAYS = 7  # reminder e-mail this many days before the event (basic_desc.txt, US-11)
 MAX_DAYS_AHEAD = 730
 MAX_TEXT_LENGTH = 500
+MAX_QUESTION_LENGTH = 2000
 GUEST_GROUP_ROWS = 5  # rows on the checkout form
 
 PAYMENT_OPTIONS = ("invoice", "vipps", "bank_transfer")
@@ -243,3 +244,12 @@ def parse_change(form, order: dict, dishes: list[dict], allergen_codes: set[str]
     groups, group_errors = parse_guest_groups(form, guests or 0, allergen_codes, diet_codes)
     errors.extend(group_errors)
     return {"guests": guests, "items": items, "delivery_notes": notes, "groups": groups}, errors
+
+
+def question_error(text: str) -> str | None:
+    """Questions and answers (US-12, US-26): not empty, not endless."""
+    if not text:
+        return "question_empty"
+    if len(text) > MAX_QUESTION_LENGTH:
+        return "question_too_long"
+    return None

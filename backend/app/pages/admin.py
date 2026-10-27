@@ -1,11 +1,13 @@
-"""Admin pages: orders (US-21 – US-25) and event-type minimums (US-20). Staff with role "admin" only."""
+"""Admin pages: orders (US-21 – US-25), answering questions (US-26) and event-type minimums (US-20).
+Staff with role "admin" only."""
 from flask import Blueprint, abort, current_app, flash, redirect, render_template, request, url_for
 from flask_login import current_user
 
 from .. import mail, orders
 from ..auth import staff_required
 from ..i18n import format_date, t, t_in
-from ..repositories import event_types
+from ..repositories import event_types, questions
+from ..repositories import kitchen as kitchen_repo
 from ..repositories import orders as orders_repo
 
 bp = Blueprint("admin", __name__, url_prefix="/admin")
@@ -50,7 +52,8 @@ def order_detail(order_id: str):
                            payment_actions=orders.payment_actions(order),
                            capacity=orders.capacity(booked, wedding, order),
                            locked=orders.is_locked(order["event_date"]), lock_days=orders.LOCK_DAYS,
-                           staff_view=True)
+                           questions=questions.for_order(order_id), max_question=orders.MAX_QUESTION_LENGTH,
+                           allergies_seen=kitchen_repo.allergies_seen(order_id), staff_view=True)
 
 
 @bp.post("/orders/<order_id>/status")
@@ -93,6 +96,39 @@ def change_payment(order_id: str):
     else:
         flash(t("payment_changed", status=t("payment_" + to_status)), "success")
     return redirect(url_for("admin.order_detail", order_id=order_id))
+
+
+@bp.get("/questions")
+@admin_only
+def question_list():
+    return render_template("admin_questions.html", rows=questions.unanswered())
+
+
+@bp.post("/orders/<order_id>/questions/<question_id>/answer")
+@admin_only
+def answer(order_id: str, question_id: str):
+    text = request.form.get("text", "").strip()
+    error = orders.question_error(text)
+    if error:
+        flash(t(error, max=orders.MAX_QUESTION_LENGTH), "error")
+    else:
+        result = questions.answer(order_id, question_id, current_user.email, text)
+        if result is None:
+            flash(t("already_answered"), "error")
+        else:
+            _send_answer(result["order"], result["customer"], result["question"], text)
+            flash(t("answer_sent"), "success")
+    return redirect(url_for("admin.order_detail", order_id=order_id, _anchor="questions"))
+
+
+def _send_answer(order: dict, customer: dict, question: str, text: str) -> None:
+    """US-26: the answer goes to the customer by e-mail, in their language."""
+    lang = customer.get("language")
+    event = order["event_type"].get(f"name_{lang}") or order["event_type"]["name_no"]
+    body = t_in(lang, "mail_answer_body", name=customer["name"], id=order["id"], event=event,
+                date=format_date(order["event_date"], lang), question=question, answer=text,
+                url=url_for("orders.detail", order_id=order["id"], _external=True))
+    mail.send(customer["email"], t_in(lang, "mail_answer_subject", id=order["id"]), body)
 
 
 @bp.get("/event-types")

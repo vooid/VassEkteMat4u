@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}{{ t("kitchen") }} – Ekte Mat{% endblock %}
+{% block head %}<meta http-equiv="refresh" content="60">{% endblock %}
+{% block content %}
+<div class="screen">
+<h1>{{ t("kitchen_heading", date=day) }}</h1>
+{% include "_day_nav.html" %}
+<p class="hint">{{ t("auto_refresh") }}</p>
+
+{% for o in rows %}
+<article class="panel screen-order" id="order-{{ o.id }}">
+  <h2>{{ tr(o.event_type, "name") }} · {{ t("guests_n", n=o.guests) }} <span class="hint">#{{ o.id }}</span></h2>
+  <ul class="plain-list dish-list">
+    {% for line in o.lines %}<li><strong>{{ line.quantity }}</strong> × {{ tr(line, "name") }}</li>{% endfor %}
+  </ul>
+
+  <h3>{{ t("allergies_heading") }}</h3>
+  {% if o.groups %}
+  <ul class="plain-list allergy-list">
+    {% for g in o.groups %}
+    <li><strong>{{ t("group_summary", count=g.count) }}:</strong>
+      {% for a in g.allergens %}<span class="allergy">{{ tr(a, "name") }}</span>{% endfor %}
+      {% for d in g.diets %}<span class="diet">{{ tr(d, "name") }}</span>{% endfor %}</li>
+    {% endfor %}
+  </ul>
+  {% if o.seen %}
+  <p class="seen">✓ {{ t("allergies_seen_by", by=o.seen.by, at=format_datetime(o.seen.at)) }}</p>
+  {% else %}
+  <form method="post" action="{{ url_for('kitchen.allergies_seen', order_id=o.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="day" value="{{ day.isoformat() }}">
+    <button type="submit" class="big-button">{{ t("confirm_allergies") }}</button>
+  </form>
+  {% endif %}
+  {% else %}
+  <p class="hint">{{ t("no_allergies") }}</p>
+  {% endif %}
+  {% if o.delivery_notes %}<p class="pre hint">{{ t("delivery_notes") }}: {{ o.delivery_notes }}</p>{% endif %}
+</article>
+{% else %}
+<p class="empty">{{ t("kitchen_empty") }}</p>
+{% endfor %}
+</div>
+{% endblock %}

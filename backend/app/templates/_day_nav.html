@@ -1,0 +1,5 @@
+<nav class="day-nav" aria-label="{{ t('event_date') }}">
+  <a href="{{ url_for(request.endpoint, day=previous.isoformat()) }}">{{ t("previous_day") }}</a>
+  {% if not is_today %}<a href="{{ url_for(request.endpoint) }}">{{ t("today") }}</a>{% endif %}
+  <a href="{{ url_for(request.endpoint, day=next.isoformat()) }}">{{ t("next_day") }}</a>
+</nav>

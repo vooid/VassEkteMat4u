@@ -6,6 +6,7 @@ from werkzeug.datastructures import MultiDict
 
 from app import create_app, jobs, orders
 from app.repositories import orders as orders_repo
+from app.repositories import questions
 from tests.conftest import FakeDriver
 
 TODAY = date(2026, 11, 2)
@@ -113,6 +114,8 @@ class ChangeStore:
             return [{"email": "ingrid@ektemat.test"}]
         if "CREATE (:OutboxMessage" in query:
             self.outbox.append(params)
+            return []
+        if query == questions.FOR_ORDER_QUERY:
             return []
         if "MATCH (c:Customer" in query:
             return [{"c": {"email": EMAIL, "name": "Kari", "phone": "", "language": "no"}}] \

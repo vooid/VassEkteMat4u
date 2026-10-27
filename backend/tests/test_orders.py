@@ -6,6 +6,7 @@ from werkzeug.datastructures import MultiDict
 
 from app import create_app, i18n, mail, orders
 from app.repositories import orders as orders_repo
+from app.repositories import questions
 from tests.conftest import FakeDriver
 
 TODAY = date(2026, 11, 2)
@@ -129,6 +130,8 @@ class OrderStore:
             return [{"order": o}] if owner == params["email"] else []
         if "OPTIONAL MATCH (e)<-[:SUITS]" in query:
             return [{"event_type": WEDDING, "dishes": [MENU3] if "wedding-menu" in params["dish_ids"] else []}]
+        if query == questions.FOR_ORDER_QUERY:
+            return []
         if "MATCH (c:Customer" in query:
             return [{"c": {"email": EMAIL, "name": "Kari", "phone": "", "language": "no"}}] \
                 if params.get("email") == EMAIL else []
@@ -269,7 +272,8 @@ def test_past_order_is_read_only(client, store):
     log_in(client)
     html = client.get("/orders/EM-000001").get_data(as_text=True)
     assert "Denne bestillingen er avsluttet og kan ikke endres." in html
-    assert "<form" not in html.split("</header>")[1]  # no change or cancel forms
+    assert "/change" not in html and "/cancel" not in html
+    assert "/orders/EM-000001/questions" in html  # questions are still possible, e.g. about the invoice
 
 
 def test_other_customers_order_is_not_found(client, store):

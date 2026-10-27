@@ -108,6 +108,8 @@ classDiagram
         String email
         String password_hash
         String pin_hash
+        int failed_pin_attempts
+        DateTime pin_locked_until
         String role
         DateTime created_at
     }
@@ -151,8 +153,8 @@ classDiagram
 | `:Order` | One catering order | See values below | US-05 – US-11, US-21 – US-25 |
 | `:GuestGroup` | A group of guests with the same allergies/diets, e.g. "4 guests, gluten-free" | Never linked to named guests (GDPR); `position` is the row number on the form, no free-text label so no names end up here | US-07, US-27, US-28 |
 | `:StatusChange` | History of every status change: who, when, from, to | Audit trail for the state machine | US-15, US-22, US-25, US-30 |
-| `:Question` / `:Answer` | Customer question about an order, and Ekte Mat's answer | | US-12, US-26 |
-| `:Staff` | Ekte Mat users | `role`: `admin`, `kitchen`, `driver`; kitchen logs in with `pin_hash` | US-18 – US-30 |
+| `:Question` / `:Answer` | Customer question about an order, and Ekte Mat's answer | At most one answer per question | US-12, US-26 |
+| `:Staff` | Ekte Mat users | `role`: `admin`, `kitchen`, `driver`; kitchen and drivers may log in with a 4–8 digit PIN (`pin_hash`, set with `flask set-pin`); 5 wrong PINs in a row block PIN login for 15 minutes (`failed_pin_attempts`, `pin_locked_until`). Admins always use the password | US-18 – US-30 |
 
 ### Value lists (stored as strings, checked by the backend)
 
@@ -187,8 +189,8 @@ CREATE CONSTRAINT staff_email     IF NOT EXISTS FOR (s:Staff)     REQUIRE s.emai
 CREATE CONSTRAINT allergen_code   IF NOT EXISTS FOR (a:Allergen)  REQUIRE a.code IS UNIQUE;   // exists
 CREATE CONSTRAINT diet_code       IF NOT EXISTS FOR (d:Diet)      REQUIRE d.code IS UNIQUE;   // exists
 CREATE CONSTRAINT image_id        IF NOT EXISTS FOR (i:Image)     REQUIRE i.id IS UNIQUE;   // exists
-CREATE CONSTRAINT question_id     IF NOT EXISTS FOR (q:Question)  REQUIRE q.id IS UNIQUE;
-CREATE INDEX order_status_date    IF NOT EXISTS FOR (o:Order) ON (o.status, o.event_date);  // admin list (US-21), kitchen/driver day view
+CREATE CONSTRAINT question_id     IF NOT EXISTS FOR (q:Question)  REQUIRE q.id IS UNIQUE;   // exists
+CREATE INDEX order_status_date    IF NOT EXISTS FOR (o:Order) ON (o.status, o.event_date);  // exists: admin list (US-21), kitchen/driver day view
 ```
 
 The ones marked `exists` are created by `backend/scripts/seed.py`; add the rest when those features are built.

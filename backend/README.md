@@ -39,8 +39,18 @@ in the e-mails point to the real site):
 
 The 5-day rule itself is checked by date on every request, so a day the job doesn't run never opens a locked order.
 
-Roles are `admin`, `kitchen` and `driver`. Only `admin` has pages so far. Staff log in at `/staff/login`; there is no
-self-registration for staff.
+Roles are `admin`, `kitchen` and `driver`; each lands on its own screen after logging in. Staff log in at
+`/staff/login` with e-mail and password; there is no self-registration for staff. Kitchen and driver staff can also log
+in at `/staff/pin` by picking their name and typing a 4–8 digit PIN, set by someone with server access (asked for
+twice, like the password):
+
+```sh
+.venv/bin/flask --app app create-staff mateo@ektemat.no --name "Mateo" --role kitchen
+.venv/bin/flask --app app set-pin mateo@ektemat.no
+```
+
+Five wrong PINs in a row block that person's PIN login for 15 minutes (the password still works). Admins can't use a
+PIN.
 
 Run the tests. The unit tests use a fake driver, so no database is needed:
 
@@ -71,9 +81,14 @@ RUN_NEO4J_TESTS=1 .venv/bin/python -m pytest
 | `/orders/<id>` | One order: dishes at the prices when ordered, guest groups, status history. Other customers' orders give 404 | US-08 |
 | `/orders/<id>/change` | Change guests, dishes, guest groups and delivery notes until more than 5 days before the event. The minimum saved on the order applies; dishes already ordered keep their price. Changing an approved order e-mails the admins | US-09 |
 | `POST /orders/<id>/cancel` | Cancel (with a confirmation tick) until more than 5 days before the event; the customer and the admins are e-mailed | US-10 |
-| `/staff/login` | Login for Ekte Mat staff (separate from customer login) | – |
+| `POST /orders/<id>/questions` | Ask a question from the order page (any status); the answer shows on the order page. The admins are e-mailed | US-12 |
+| `/staff/login` | Login for Ekte Mat staff (separate from customer login); admin → orders, kitchen → kitchen screen, driver → driver screen | – |
+| `/staff/pin` | PIN login for kitchen and driver staff: pick your name, type your PIN | US-27 |
+| `/kitchen?day=YYYY-MM-DD` | Kitchen screen (kitchen and admin), today by default: orders in preparation, portions per dish, guest groups with allergies in red, an "Allergies seen" button that stores who and when. Refreshes every minute | US-27, US-28 |
+| `/driver?day=YYYY-MM-DD` | Driver screen (driver and admin): the day's orders in preparation with address, map link, customer's phone and delivery notes; "Mark as delivered" | US-30 |
+| `/admin/questions` | Admin: unanswered questions, newest first, linking to the order | US-26 |
 | `/admin/orders` | Admin: all orders, filtered by status (default: submitted, approved, in preparation) and event-date range, with guests already booked that day | US-21, US-23 |
-| `/admin/orders/<id>` | Admin: the whole order and the customer; approve, reject with reason, release to kitchen (5 days or less before the event), mark delivered, set payment status; capacity warning above 400 guests a day, 250 with a wedding | US-22 – US-25 |
+| `/admin/orders/<id>` | Admin: the whole order and the customer; approve, reject with reason, release to kitchen (5 days or less before the event), mark delivered, set payment status; capacity warning above 400 guests a day, 250 with a wedding; whether the kitchen has seen the allergies; questions with an answer form (the answer is e-mailed to the customer in their language) | US-22 – US-26, US-28 |
 | `/admin/event-types` | Admin: change each event type's minimum guests (1–265) | US-20 |
 | `/dev/outbox` | Development only (`DEV_OUTBOX`, on when `FLASK_DEBUG=1`): the e-mails the system would have sent | US-07 |
 
@@ -116,7 +131,7 @@ app/
   cart.py            cart in the session + minimum-order rules (pure functions)
   auth.py            Flask-Login: customer and staff users, login checks, customer_required / staff_required
   urls.py            safe_next(): redirect only to local paths
-  cli.py             flask create-staff, flask run-daily-jobs
+  cli.py             flask create-staff, flask set-pin, flask run-daily-jobs
   jobs.py            the daily job: 7-day reminders, 5-day lock
   orders.py          checkout validation, 5-day rule, admin transitions, capacity (pure functions)
   mail.py            outgoing e-mail -> development outbox (no mail service yet)
@@ -136,11 +151,11 @@ To add a feature: put its Cypher in `repositories/<name>.py`, its pages in `page
 ## Graph model
 
 The full data model is in [`docs/diagrams/data_model.md`](../docs/diagrams/data_model.md). `:EventType`, `:FoodItem`
-(with allergens, diets, images), `:Customer`, `:Staff` and `:Order` (with guest groups and status history) are implemented
-so far; the seed script already creates the uniqueness constraints for `EventType`, `FoodItem`, `Customer`
-and `Order`.
+(with allergens, diets, images), `:Customer`, `:Staff`, `:Order` (with guest groups and status history) and
+`:Question`/`:Answer` are implemented so far; the seed script creates the constraints and indexes marked `exists` there.
 
 ## Before production
 
 - **Secrets:** never commit `.env`. Set a long random `SECRET_KEY` (it signs the session cookie). Serve over HTTPS and set `SESSION_COOKIE_SECURE=1`. Never publish the Claude API key (`CLAUDE.md`).
+- **PIN login:** a short PIN is only as safe as the device it's typed on. Allow `/staff/pin` only from the kitchen tablet and the drivers' phones (e.g. on Ekte Mat's network or behind the hosting's IP allow-list), and change a PIN when someone leaves.
 - **Hosting:** the case requires data in the EU/EEA and running costs under 3 000 NOK/month (`docs/context/04_vision_scope_constraints/`). Check the region and price of any hosted Neo4j (e.g. Neo4j AuraDB) before choosing, and get a data processing agreement (GDPR note).
