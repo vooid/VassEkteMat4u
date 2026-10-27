@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}{{ t("checkout_heading") }} – Ekte Mat{% endblock %}
+{% block content %}
+<h1>{{ t("checkout_heading") }}</h1>
+
+{% if errors %}
+<div class="flash flash-error" role="alert">
+  <ul>{% for key, args in errors %}<li>{{ t(key, **args) }}</li>{% endfor %}</ul>
+</div>
+{% endif %}
+
+<section class="panel">
+  <h2>{{ t("summary") }}</h2>
+  <p>{{ t("cart_for_event", event=tr(event_type, "name")) }} · {{ guests }} {{ t("guests") | lower }}</p>
+  <ul class="plain-list">
+    {% for line in lines %}<li>{{ line.quantity }} × {{ tr(line, "name") }} <span class="hint">({{ line.line_total }} kr)</span></li>{% endfor %}
+  </ul>
+  <p class="total">{{ t("total") }}: {{ total }} kr</p>
+  <p><a href="{{ url_for('cart.view') }}">{{ t("edit_cart") }}</a></p>
+</section>
+
+<form method="post" action="{{ url_for('orders.checkout') }}" class="checkout-form">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+  <fieldset class="panel stack">
+    <legend>{{ t("event_details") }}</legend>
+    <label for="event_date">{{ t("event_date") }}</label>
+    <input id="event_date" name="event_date" type="date" required min="{{ earliest.isoformat() }}"
+           max="{{ latest.isoformat() }}" value="{{ values.get('event_date', '') }}" aria-describedby="event-date-hint">
+    <p class="hint" id="event-date-hint">{{ t("event_date_hint", date=earliest, days=lock_days) }}</p>
+
+    <label for="delivery_address">{{ t("delivery_address") }}</label>
+    <textarea id="delivery_address" name="delivery_address" rows="2" required maxlength="500"
+              autocomplete="street-address">{{ values.get('delivery_address', '') }}</textarea>
+
+    <label for="delivery_notes">{{ t("delivery_notes") }} <span class="hint">({{ t("optional") }})</span></label>
+    <textarea id="delivery_notes" name="delivery_notes" rows="2" maxlength="500"
+              aria-describedby="notes-hint">{{ values.get('delivery_notes', '') }}</textarea>
+    <p class="hint" id="notes-hint">{{ t("delivery_notes_hint") }}</p>
+  </fieldset>
+
+  <fieldset class="panel">
+    <legend>{{ t("guest_groups") }}</legend>
+    <p class="hint">{{ t("guest_groups_intro") }}</p>
+    {% for n in range(1, group_rows + 1) %}
+      {% set prefix = "group-" ~ n %}
+      {% if n == 2 %}<details class="more-groups"{% if more_groups_open %} open{% endif %}>
+        <summary>{{ t("more_groups") }}</summary>{% endif %}
+      <fieldset class="guest-group">
+        <legend>{{ t("group_n", n=n) }}</legend>
+        <label class="inline">{{ t("guests_in_group") }}
+          <input name="{{ prefix }}-count" type="number" inputmode="numeric" min="1" max="9999"
+                 value="{{ values.get(prefix ~ '-count', '') }}"></label>
+        <div class="choices">
+          <span class="choice-label">{{ t("allergens") }}</span>
+          {% for a in allergens %}
+          <label class="choice"><input type="checkbox" name="{{ prefix }}-allergens" value="{{ a.code }}"
+            {% if a.code in values.getlist(prefix ~ '-allergens') %}checked{% endif %}> {{ tr(a, "name") }}</label>
+          {% endfor %}
+        </div>
+        <div class="choices">
+          <span class="choice-label">{{ t("diets") }}</span>
+          {% for d in diets %}
+          <label class="choice"><input type="checkbox" name="{{ prefix }}-diets" value="{{ d.code }}"
+            {% if d.code in values.getlist(prefix ~ '-diets') %}checked{% endif %}> {{ tr(d, "name") }}</label>
+          {% endfor %}
+        </div>
+      </fieldset>
+      {% if n == group_rows %}</details>{% endif %}
+    {% endfor %}
+  </fieldset>
+
+  <fieldset class="panel">
+    <legend>{{ t("payment_option") }}</legend>
+    {% for option in payment_options %}
+    <label class="choice"><input type="radio" name="payment_option" value="{{ option }}" required
+      {% if values.get('payment_option') == option %}checked{% endif %}> {{ t("option_" ~ option) }}</label>
+    {% endfor %}
+  </fieldset>
+
+  <button type="submit">{{ t("submit_order") }} ({{ total }} kr)</button>
+  <p class="hint">{{ t("submit_hint") }}</p>
+</form>
+{% endblock %}

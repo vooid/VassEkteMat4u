@@ -87,8 +87,11 @@
       <a class="button" href="{{ url_for('account.login', next=url_for('cart.view')) }}">{{ t("log_in_to_order") }}</a>
       <p class="hint">{{ t("cart_kept_on_login") }}</p>
     {% else %}
-      <button type="button" disabled title="{{ t('order_coming') }}">{{ t("continue_to_order") }}</button>
-      <p class="hint">{{ t("order_coming") }}</p>
+      {% if problems %}
+        <button type="button" disabled>{{ t("continue_to_order") }}</button>
+      {% else %}
+        <a class="button" href="{{ url_for('orders.checkout') }}">{{ t("continue_to_order") }}</a>
+      {% endif %}
     {% endif %}
   </section>
 

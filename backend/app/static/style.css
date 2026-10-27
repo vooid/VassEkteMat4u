@@ -145,3 +145,36 @@ a.button { display: inline-block; padding: 6px 14px; border-radius: 8px; backgro
   .header-nav { order: 3; flex-basis: 100%; }
   .account-nav { margin-left: auto; }
 }
+
+/* Checkout and orders */
+.panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin: 16px 0; }
+.panel h2 { margin-top: 0; font-size: 1.15rem; }
+fieldset.panel legend { font-weight: 700; padding: 0 4px; }
+.checkout-form { max-width: 720px; }
+.stack textarea { font: inherit; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; background: #fff; resize: vertical; }
+.plain-list { margin: 0; padding-left: 20px; }
+.plain-list li { margin: 4px 0; }
+p.total { font-weight: 700; color: var(--green); }
+.guest-group { border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; margin: 10px 0; }
+.guest-group legend { font-weight: 600; padding: 0 4px; }
+.inline { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+.choices { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 8px; align-items: center; }
+.choice-label { font-size: .85rem; color: var(--muted); flex-basis: 100%; }
+.choice { display: inline-flex; align-items: center; gap: 4px; margin-right: 14px; }
+.more-groups summary { cursor: pointer; color: var(--green); margin: 8px 0; }
+.status { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: .85rem; background: #e7ebe3; white-space: nowrap; }
+.status-submitted, .status-awaiting_company_approval { background: #fbefd5; color: #7a5300; }
+.status-approved, .status-in_preparation { background: #dcefe0; color: #1f5130; }
+.status-rejected, .status-cancelled { background: #f6dcdc; color: #8a1f1f; }
+.facts { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; margin: 0; }
+.facts dt { font-weight: 600; }
+.facts dd { margin: 0; }
+.pre { white-space: pre-line; }
+.mail-body { white-space: pre-wrap; font: inherit; margin: 0; }
+.orders-table a { white-space: nowrap; }
+
+@media (max-width: 600px) {
+  .facts { grid-template-columns: 1fr; }
+  .facts dd { margin-bottom: 8px; }
+  .account-nav .who { display: none; }
+}

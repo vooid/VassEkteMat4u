@@ -18,6 +18,8 @@ _DUMMY_HASH = generate_password_hash("not-a-real-password")
 
 login_manager = LoginManager()
 login_manager.login_view = "account.login"
+login_manager.login_message = "login_required"  # i18n key, translated by localize_callback in init_app
+login_manager.login_message_category = "warning"
 
 
 class Customer(UserMixin):
@@ -71,4 +73,6 @@ def authenticate(email: str, password: str) -> Customer | None:
 
 
 def init_app(app: Flask) -> None:
+    from .i18n import t
+    login_manager.localize_callback = t
     login_manager.init_app(app)

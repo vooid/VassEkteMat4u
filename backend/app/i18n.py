@@ -2,10 +2,15 @@
 
 UI strings live in TEXTS; data is stored with _no/_en properties and picked with `tr()`.
 """
-from flask import Flask, g, request, session
+from datetime import date, datetime
+from zoneinfo import ZoneInfo
+
+from flask import Flask, g, session
 
 LANGUAGES = ("no", "en")
 DEFAULT_LANGUAGE = "no"
+TIMEZONE = ZoneInfo("Europe/Oslo")
+MONTHS_EN = ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
 
 TEXTS = {
     "no": {
@@ -47,7 +52,6 @@ TEXTS = {
         "dish_below_minimum": "{dish}: minst {n} porsjoner.",
         "cart_ok": "Handlekurven oppfyller minstekravene.",
         "continue_to_order": "Gå videre til bestilling",
-        "order_coming": "Bestilling kommer i neste versjon.",
         "log_in": "Logg inn",
         "log_out": "Logg ut",
         "register": "Registrer deg",
@@ -71,6 +75,75 @@ TEXTS = {
         "forgot_password_hint": "Glemt passordet? Kontakt Ekte Mat, så hjelper vi deg.",
         "log_in_to_order": "Logg inn for å bestille",
         "cart_kept_on_login": "Handlekurven blir tatt vare på når du logger inn.",
+        "my_orders": "Mine bestillinger",
+        "event_type": "Arrangement",
+        "login_required": "Logg inn for å fortsette.",
+        "fix_cart_first": "Handlekurven oppfyller ikke minstekravene ennå.",
+        "checkout_heading": "Fullfør bestillingen",
+        "summary": "Sammendrag",
+        "edit_cart": "Endre handlekurven",
+        "event_details": "Arrangement og levering",
+        "event_date": "Dato for arrangementet",
+        "event_date_hint": "Tidligst {date}. Bestillinger kan endres til {days} dager før arrangementet.",
+        "delivery_address": "Leveringsadresse",
+        "delivery_notes": "Beskjed om levering",
+        "delivery_notes_hint": "For eksempel inngang, tidspunkt eller kontaktperson. Ikke skriv allergier eller navn på gjester her.",
+        "payment_option": "Betaling",
+        "option_invoice": "Faktura",
+        "option_vipps": "Vipps",
+        "option_bank_transfer": "Bankoverføring",
+        "guest_groups": "Allergier og dietter",
+        "guest_groups_intro": "Én rad per gruppe gjester med samme behov, for eksempel «4 gjester: glutenfri». Ikke skriv navn.",
+        "group_n": "Gruppe {n}",
+        "guests_in_group": "Gjester i gruppen",
+        "diets": "Dietter",
+        "more_groups": "Flere grupper",
+        "submit_order": "Send bestillingen",
+        "submit_hint": "Du får en bekreftelse på e-post.",
+        "event_date_invalid": "Velg en dato for arrangementet.",
+        "event_date_too_soon": "Arrangementet må være mer enn {days} dager fram i tid (tidligst {date}).",
+        "event_date_too_far": "Vi tar imot bestillinger inntil to år fram i tid.",
+        "address_required": "Skriv inn leveringsadressen.",
+        "text_too_long": "Adresse og beskjed kan ha høyst {max} tegn.",
+        "payment_option_required": "Velg betalingsmåte.",
+        "group_count_invalid": "Gruppe {n}: skriv antall gjester.",
+        "group_needs_something": "Gruppe {n}: kryss av for minst én allergi eller diett.",
+        "groups_exceed_guests": "Gruppene har til sammen flere gjester enn bestillingen ({n}).",
+        "order_failed": "Bestillingen kunne ikke sendes fordi menyen eller minstekravene er endret. Sjekk handlekurven.",
+        "order_submitted": "Takk! Bestilling {id} er sendt inn.",
+        "confirmation_subject": "Ekte Mat: bestilling {id} er mottatt",
+        "confirmation_body": "Hei {name},\n\nTakk for bestillingen! Vi har mottatt den og sier fra når den er godkjent.\n\nBestilling: {id}\nArrangement: {event}\nDato: {date}\nGjester: {guests}\nTotalt: {total} kr\n\nSe bestillingen: {url}\n\nHilsen Ekte Mat",
+        "current_orders": "Aktuelle bestillinger",
+        "past_orders": "Tidligere bestillinger",
+        "no_orders": "Du har ingen bestillinger ennå.",
+        "no_past_orders": "Ingen tidligere bestillinger.",
+        "order": "Bestilling",
+        "order_heading": "Bestilling {id}",
+        "date": "Dato",
+        "guests": "Gjester",
+        "status": "Status",
+        "payment": "Betaling",
+        "status_awaiting_company_approval": "Venter på godkjenning i firmaet",
+        "status_submitted": "Sendt inn",
+        "status_approved": "Godkjent",
+        "status_in_preparation": "Under forberedelse",
+        "status_delivered": "Levert",
+        "status_rejected": "Avvist",
+        "status_cancelled": "Avbestilt",
+        "payment_not_paid": "Ikke betalt",
+        "payment_invoiced": "Fakturert",
+        "payment_paid": "Betalt",
+        "min_guests_at_order": "Minstekrav da bestillingen ble sendt: {n} gjester",
+        "no_groups": "Ingen allergier eller dietter oppgitt.",
+        "group_summary": "{count} gjester",
+        "history": "Historikk",
+        "read_only_note": "Denne bestillingen er avsluttet og kan ikke endres.",
+        "change_coming": "Endring og avbestilling på nett kommer i en senere versjon. Kontakt Ekte Mat hvis noe må endres.",
+        "all_orders": "Alle bestillinger",
+        "outbox_heading": "Utboks (utvikling)",
+        "outbox_intro": "E-post blir ikke sendt i denne versjonen. Her er det som ville blitt sendt.",
+        "outbox_empty": "Ingen e-post ennå.",
+        "to": "Til",
     },
     "en": {
         "site_title": "Ekte Mat – catering in Bergen",
@@ -111,7 +184,6 @@ TEXTS = {
         "dish_below_minimum": "{dish}: at least {n} portions.",
         "cart_ok": "Your cart meets the minimums.",
         "continue_to_order": "Continue to order",
-        "order_coming": "Ordering comes in the next version.",
         "log_in": "Log in",
         "log_out": "Log out",
         "register": "Register",
@@ -135,6 +207,75 @@ TEXTS = {
         "forgot_password_hint": "Forgot your password? Contact Ekte Mat and we'll help you.",
         "log_in_to_order": "Log in to order",
         "cart_kept_on_login": "Your cart is kept when you log in.",
+        "my_orders": "My orders",
+        "event_type": "Event",
+        "login_required": "Log in to continue.",
+        "fix_cart_first": "Your cart doesn't meet the minimums yet.",
+        "checkout_heading": "Complete your order",
+        "summary": "Summary",
+        "edit_cart": "Change the cart",
+        "event_details": "Event and delivery",
+        "event_date": "Event date",
+        "event_date_hint": "{date} at the earliest. Orders can be changed until {days} days before the event.",
+        "delivery_address": "Delivery address",
+        "delivery_notes": "Delivery notes",
+        "delivery_notes_hint": "For example entrance, time or contact person. Don't write allergies or guests' names here.",
+        "payment_option": "Payment",
+        "option_invoice": "Invoice",
+        "option_vipps": "Vipps",
+        "option_bank_transfer": "Bank transfer",
+        "guest_groups": "Allergies and diets",
+        "guest_groups_intro": "One row per group of guests with the same needs, for example \"4 guests: gluten-free\". Don't write names.",
+        "group_n": "Group {n}",
+        "guests_in_group": "Guests in group",
+        "diets": "Diets",
+        "more_groups": "More groups",
+        "submit_order": "Submit order",
+        "submit_hint": "You'll get a confirmation by e-mail.",
+        "event_date_invalid": "Choose a date for the event.",
+        "event_date_too_soon": "The event must be more than {days} days ahead ({date} at the earliest).",
+        "event_date_too_far": "We take orders up to two years ahead.",
+        "address_required": "Enter the delivery address.",
+        "text_too_long": "Address and notes can be at most {max} characters.",
+        "payment_option_required": "Choose a payment option.",
+        "group_count_invalid": "Group {n}: enter the number of guests.",
+        "group_needs_something": "Group {n}: tick at least one allergy or diet.",
+        "groups_exceed_guests": "The groups add up to more guests than the order ({n}).",
+        "order_failed": "The order couldn't be submitted because the menu or the minimums have changed. Check your cart.",
+        "order_submitted": "Thank you! Order {id} is submitted.",
+        "confirmation_subject": "Ekte Mat: order {id} received",
+        "confirmation_body": "Hi {name},\n\nThank you for your order! We've received it and will let you know when it's approved.\n\nOrder: {id}\nEvent: {event}\nDate: {date}\nGuests: {guests}\nTotal: {total} NOK\n\nSee your order: {url}\n\nBest regards,\nEkte Mat",
+        "current_orders": "Current orders",
+        "past_orders": "Past orders",
+        "no_orders": "You have no orders yet.",
+        "no_past_orders": "No past orders.",
+        "order": "Order",
+        "order_heading": "Order {id}",
+        "date": "Date",
+        "guests": "Guests",
+        "status": "Status",
+        "payment": "Payment",
+        "status_awaiting_company_approval": "Awaiting company approval",
+        "status_submitted": "Submitted",
+        "status_approved": "Approved",
+        "status_in_preparation": "In preparation",
+        "status_delivered": "Delivered",
+        "status_rejected": "Rejected",
+        "status_cancelled": "Cancelled",
+        "payment_not_paid": "Not paid",
+        "payment_invoiced": "Invoiced",
+        "payment_paid": "Paid",
+        "min_guests_at_order": "Minimum when ordered: {n} guests",
+        "no_groups": "No allergies or diets given.",
+        "group_summary": "{count} guests",
+        "history": "History",
+        "read_only_note": "This order is closed and can't be changed.",
+        "change_coming": "Changing and cancelling online comes in a later version. Contact Ekte Mat if something needs to change.",
+        "all_orders": "All orders",
+        "outbox_heading": "Outbox (development)",
+        "outbox_intro": "E-mail isn't sent in this version. This is what would have been sent.",
+        "outbox_empty": "No e-mail yet.",
+        "to": "To",
     },
 }
 
@@ -146,7 +287,32 @@ def current_language() -> str:
 def t(key: str, **kwargs) -> str:
     """Translate a UI string into the current language."""
     text = TEXTS[current_language()].get(key) or TEXTS[DEFAULT_LANGUAGE].get(key, key)
+    kwargs = {k: format_date(v) if isinstance(v, date) else v for k, v in kwargs.items()}
     return text.format(**kwargs) if kwargs else text
+
+
+def _native(value):
+    """neo4j.time.Date/DateTime -> datetime.date/datetime."""
+    return value.to_native() if hasattr(value, "to_native") else value
+
+
+def format_date(value) -> str:
+    d = _native(value)
+    if d is None:
+        return ""
+    if current_language() == "en":
+        return f"{d.day} {MONTHS_EN[d.month - 1]} {d.year}"
+    return d.strftime("%d.%m.%Y")
+
+
+def format_datetime(value) -> str:
+    """Date and time in Norwegian time."""
+    dt = _native(value)
+    if dt is None:
+        return ""
+    if isinstance(dt, datetime) and dt.tzinfo:
+        dt = dt.astimezone(TIMEZONE)
+    return f"{format_date(dt)} {dt:%H:%M}"
 
 
 def tr(obj: dict, field: str) -> str:
@@ -161,4 +327,5 @@ def init_app(app: Flask) -> None:
         # The <html lang> attribute uses "nb" (Norwegian Bokmål) for "no".
         g.html_lang = "nb" if g.lang == "no" else "en"
 
-    app.jinja_env.globals.update(t=t, tr=tr, current_language=current_language)
+    app.jinja_env.globals.update(t=t, tr=tr, current_language=current_language, format_date=format_date,
+                                 format_datetime=format_datetime)

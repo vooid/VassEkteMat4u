@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}{{ t("outbox_heading") }} – Ekte Mat{% endblock %}
+{% block content %}
+<h1>{{ t("outbox_heading") }}</h1>
+<p class="hint">{{ t("outbox_intro") }}</p>
+{% for m in messages %}
+<article class="panel">
+  <h2>{{ m.subject }}</h2>
+  <p class="hint">{{ t("to") }}: {{ m.recipient }} · {{ format_datetime(m.created_at) }}</p>
+  <pre class="mail-body">{{ m.body }}</pre>
+</article>
+{% else %}
+<p class="empty">{{ t("outbox_empty") }}</p>
+{% endfor %}
+{% endblock %}

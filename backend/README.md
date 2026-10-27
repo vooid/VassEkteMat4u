@@ -41,9 +41,18 @@ RUN_NEO4J_TESTS=1 .venv/bin/python -m pytest
 | `/register` | Create a customer account (name, e-mail, phone, password ≥ 8 characters); logs in and keeps the cart | US-04 |
 | `/login` | Log in with e-mail and password; a failed login gives one generic message | US-04 |
 | `POST /logout` | Log out; the cart is cleared, the language is kept | US-04 |
+| `/order` | Checkout (logged in): event date, delivery address and notes, allergies and diets per guest group, payment option. Creates the order as *Submitted* | US-06, US-07 |
+| `/orders` | The customer's orders, current and past, with status and payment status | US-08 |
+| `/orders/<id>` | One order: dishes at the prices when ordered, guest groups, status history. Other customers' orders give 404 | US-08 |
+| `/dev/outbox` | Development only (`DEV_OUTBOX`, on when `FLASK_DEBUG=1`): the e-mails the system would have sent | US-07 |
 
 Each card's minimum order is the larger of the event type's current minimum and the dish's own minimum order quantity. The cart enforces the same rule per dish, and the number of guests must reach the event type's minimum
 (`app/cart.py`). A cart is for one event type, because an order is.
+
+An order is created in one Cypher query (`repositories/orders.py`) that checks the minimums again against the
+database and copies the event type's minimum and the dish prices onto the order, so later changes don't affect it. The
+event date must be more than 5 days ahead (`app/orders.py`, assumption in US-07). Allergies are stored per guest group
+as counts, never with names (GDPR). E-mail isn't sent yet: `app/mail.py` stores it in the development outbox.
 
 Passwords are hashed with Werkzeug (scrypt). There is no e-mail password reset in this version (decision 2026-10-27).
 A logged-in customer's language choice is saved on the account and restored at the next login. Redirects after login
@@ -70,6 +79,8 @@ app/
   cart.py            cart in the session + minimum-order rules (pure functions)
   auth.py            Flask-Login setup, customer user, registration checks, password hashing
   urls.py            safe_next(): redirect only to local paths
+  orders.py          checkout validation, 5-day rule, current/past statuses (pure functions)
+  mail.py            outgoing e-mail -> development outbox (no mail service yet)
   i18n.py            Norwegian/English: UI strings (TEXTS) and tr() for _no/_en data fields
   pages/             Flask blueprints that render HTML pages
   routes/            Flask blueprints for the JSON API (HTTP layer, validation)
@@ -86,7 +97,8 @@ To add a feature: put its Cypher in `repositories/<name>.py`, its pages in `page
 ## Graph model
 
 The full data model is in [`docs/diagrams/data_model.md`](../docs/diagrams/data_model.md). `:EventType`, `:FoodItem`
-(with allergens, diets, images) and `:Customer` are implemented so far; the seed script already creates the uniqueness constraints for `EventType`, `FoodItem`, `Customer`
+(with allergens, diets, images), `:Customer` and `:Order` (with guest groups and status history) are implemented so
+far; the seed script already creates the uniqueness constraints for `EventType`, `FoodItem`, `Customer`
 and `Order`.
 
 ## Before production
