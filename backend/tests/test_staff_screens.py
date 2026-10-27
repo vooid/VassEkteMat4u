@@ -1,4 +1,4 @@
-"""PIN login, kitchen and driver screens (US-27, US-28, US-30) and questions (US-12, US-26)."""
+"""PIN login, kitchen screen, prep list and driver screen (US-27 – US-30) and questions (US-12, US-26)."""
 from datetime import date, datetime, timezone
 
 import pytest
@@ -183,6 +183,7 @@ class ScreenStore:
     def __init__(self):
         self.kitchen = [kitchen_order()]
         self.confirmed, self.status_changes = [], []
+        self.prep = {"amounts": [], "missing": [], "unapproved": 0}
 
     def __call__(self, query, params):
         if query == kitchen_repo.KITCHEN_DAY_QUERY:
@@ -196,6 +197,9 @@ class ScreenStore:
                                "delivery_address": "Bryggen 1, Bergen", "delivery_notes": "Bakdøra",
                                "event_type": LUNCH, "customer": {"name": "Kari", "phone": "+4799999999"},
                                "delivered": None}}]
+        if query == kitchen_repo.PREP_LIST_QUERY:
+            self.prep_params = params
+            return [self.prep]
         if query == orders_repo.CHANGE_STATUS_QUERY:
             self.status_changes.append(params)
             return [{"id": params["order_id"]}]
@@ -246,10 +250,66 @@ def test_driver_screen_and_delivery(client, driver, screens):
         ("EM-000001", "in_preparation", "delivered", STAFF["driver"]["email"])
 
 
+def ingredient(id_, name_no, unit, day, amount):
+    return {"id": id_, "name_no": name_no, "name_en": name_no, "unit": unit, "day": day, "amount": amount}
+
+
+def test_prep_list_sums_ingredients_for_three_days(client, driver, screens, monkeypatch):
+    monkeypatch.setattr(orders, "today", lambda: date(2026, 11, 2))
+    screens.prep = {"amounts": [ingredient("cod", "Torskefilet", "kg", "2026-11-02", 0.12 * 25),
+                                ingredient("cod", "Torskefilet", "kg", "2026-11-04", 1.5),
+                                ingredient("eggs", "Egg", "pcs", "2026-11-03", 0.5 * 25),
+                                ingredient("cream", "Fløte", "l", "2026-11-03", 0.08 * 12)],
+                    "missing": [{"name_no": "Rakfisk-smaking", "name_en": "Rakfisk tasting", "portions": 10}],
+                    "unapproved": 2}
+    log_in_staff(client, driver, "kitchen", screens)
+    html = client.get("/kitchen/prep").get_data(as_text=True)
+    assert screens.prep_params == {"first": "2026-11-02", "last": "2026-11-04", "statuses": ["approved", "in_preparation"]}
+    assert "Prepliste 02.11.2026 – 04.11.2026" in html
+    # Rows sorted by name; kilos with a decimal comma, pieces rounded up, "–" on days without the ingredient.
+    assert html.index(">Egg<") < html.index(">Fløte<") < html.index(">Torskefilet<")
+    cod = html[html.index(">Torskefilet<"):]
+    assert ['3 kg', '–', '1,5 kg'] == [c.split("<")[0] for c in cod.split('class="num">')[1:4]]
+    assert "<strong>4,5 kg</strong>" in cod
+    assert "13 stk" in html and "0,96 l" in html
+    assert "Bestillinger som venter på godkjenning, er ikke tatt med: 2." in html
+    assert "Rakfisk-smaking: 10 porsjoner" in html
+
+
+def test_prep_list_empty(client, driver, screens):
+    log_in_staff(client, driver, "admin", screens)
+    html = client.get("/kitchen/prep").get_data(as_text=True)
+    assert "Ingen bestillinger de neste 3 dagene." in html and "<table" not in html
+
+
+def test_kitchen_pages_work_offline_on_the_tablet_only(client, driver, screens):
+    log_in_staff(client, driver, "kitchen", screens)
+    html = client.get("/kitchen").get_data(as_text=True)
+    assert 'id="offline-warning"' in html and 'data-updated="' in html
+    assert 'serviceWorker.register("/kitchen/sw.js", {scope: "/kitchen"})' in html
+    log_in_staff(client, driver, "admin", screens)
+    html = client.get("/kitchen").get_data(as_text=True)
+    assert 'id="offline-warning"' in html and "serviceWorker.register" not in html  # not on the admin's laptop
+
+
+def test_service_worker_may_control_the_kitchen_pages(client):
+    response = client.get("/kitchen/sw.js")
+    assert response.status_code == 200 and "javascript" in response.mimetype
+    assert response.headers["Service-Worker-Allowed"] == "/kitchen" and response.headers["Cache-Control"] == "no-cache"
+    assert "caches.match" in response.get_data(as_text=True)
+
+
+def test_logout_clears_the_offline_copy(client, driver, screens):
+    log_in_staff(client, driver, "kitchen", screens)
+    response = client.post("/logout")
+    assert response.headers["Clear-Site-Data"] == '"cache", "storage"'
+
+
 @pytest.mark.parametrize("role,path,allowed", [
     ("kitchen", "/kitchen", True), ("kitchen", "/driver", False), ("kitchen", "/admin/orders", False),
     ("driver", "/driver", True), ("driver", "/kitchen", False),
     ("admin", "/kitchen", True), ("admin", "/driver", True),
+    ("kitchen", "/kitchen/prep", True), ("admin", "/kitchen/prep", True), ("driver", "/kitchen/prep", False),
 ])
 def test_screens_per_role(client, driver, screens, role, path, allowed):
     log_in_staff(client, driver, role, screens)

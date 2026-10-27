@@ -19,6 +19,7 @@
         <a href="{{ url_for('admin.device_list') }}">{{ t("devices") }}</a>
         {% endif %}
         {% if current_user.role in ("admin", "kitchen") %}<a href="{{ url_for('kitchen.index') }}">{{ t("kitchen") }}</a>{% endif %}
+        {% if current_user.role == "kitchen" %}<a href="{{ url_for('kitchen.prep') }}">{{ t("prep_list") }}</a>{% endif %}
         {% if current_user.role in ("admin", "driver") %}<a href="{{ url_for('driver.index') }}">{{ t("driver") }}</a>{% endif %}
       {% else %}
       <a href="{{ url_for('menu.index') }}">{{ t("menu_heading") }}</a>

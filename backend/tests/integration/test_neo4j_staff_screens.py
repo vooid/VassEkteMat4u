@@ -1,4 +1,4 @@
-"""PIN, question, kitchen and driver queries against real Neo4j.
+"""PIN, question, kitchen, prep list and driver queries against real Neo4j.
 Opt-in: RUN_NEO4J_TESTS=1 .venv/bin/python -m pytest tests/integration"""
 import os
 from datetime import timedelta
@@ -41,10 +41,10 @@ def app_ctx():
         run(CLEANUP, customer=CUSTOMER, cook=COOK, admin=ADMIN)
 
 
-def place(groups=(), time="12:00"):
-    details = {"event_date": DAY, "event_time": time, "delivery_address": "Bryggen 1", "delivery_notes": "Bakdøra",
+def place(groups=(), time="12:00", day=DAY, items=None):
+    details = {"event_date": day, "event_time": time, "delivery_address": "Bryggen 1", "delivery_notes": "Bakdøra",
                "payment_option": "invoice"}
-    return orders_repo.create(CUSTOMER, "corporate-lunch", 10, {"fish-soup": 10}, details, list(groups))["id"]
+    return orders_repo.create(CUSTOMER, "corporate-lunch", 10, items or {"fish-soup": 10}, details, list(groups))["id"]
 
 
 def release(order_id):
@@ -116,6 +116,28 @@ def test_kitchen_and_driver_sort_by_event_time(app_ctx):
     release(early)
     assert [o["id"] for o in kitchen.kitchen_day(DAY)] == [early, late]
     assert [o["event_time"] for o in kitchen.driver_day(DAY)] == ["09:30", "18:00"]
+
+
+def test_prep_list_sums_recipes_over_three_days(app_ctx):
+    days = [DAY + timedelta(days=n) for n in range(3)]
+    in_preparation = place()
+    release(in_preparation)
+    approved = place(day=days[2], items={"fish-soup": 20, "beetroot-salad": 10})
+    assert orders_repo.change_status(approved, "submitted", "approved", ADMIN, None)
+    place(day=days[1])  # submitted: only counted as waiting for approval
+    run("MATCH (:FoodItem {id: 'beetroot-salad'})-[u:USES]->() DELETE u")
+    try:
+        result = kitchen.prep_list(days, ("approved", "in_preparation"))
+    finally:
+        seed()  # gives the salad its sample recipe back, and adds nothing to dishes that have one
+    by_id = {i["name_en"]: i for i in result["ingredients"]}
+    assert by_id["Cod fillet"]["per_day"] == pytest.approx([10 * 0.12, 0, 20 * 0.12])
+    assert by_id["Cod fillet"]["total"] == pytest.approx(30 * 0.12) and by_id["Fish stock"]["unit"] == "l"
+    assert result["missing"] == [{"name_no": "Rødbete- og kikertsalat", "name_en": "Beetroot and chickpea salad",
+                                  "portions": 10}]
+    assert result["unapproved"] == 1
+    assert run("MATCH (:FoodItem {id: 'fish-soup'})-[u:USES]->() RETURN count(u) AS n")[0]["n"] == 5
+    assert run("MATCH (:FoodItem {id: 'beetroot-salad'})-[u:USES]->() RETURN count(u) AS n")[0]["n"] == 3
 
 
 def test_pin_devices(app_ctx):

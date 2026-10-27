@@ -119,4 +119,7 @@ def logout():
     if lang:
         session["lang"] = lang
     flash(t("logged_out"), "success")
-    return redirect(url_for("menu.index"))
+    response = redirect(url_for("menu.index"))
+    # Removes what the kitchen tablet keeps for offline use (US-29): its service worker and the saved pages.
+    response.headers["Clear-Site-Data"] = '"cache", "storage"'
+    return response

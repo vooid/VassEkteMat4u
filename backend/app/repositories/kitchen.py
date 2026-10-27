@@ -1,4 +1,4 @@
-"""Cypher queries for the kitchen screen (US-27, US-28) and the driver screen (US-30)."""
+"""Cypher queries for the kitchen screen (US-27, US-28), the prep list (US-29) and the driver screen (US-30)."""
 from ..db import run
 
 # One query per screen, no images: the kitchen tablet must be fast (Mateo: the old plugin took 10 seconds).
@@ -39,6 +39,28 @@ MATCH (s:Staff)-[seen:CONFIRMED_ALLERGIES]->(:Order {id: $order_id})
 RETURN {by: s.name, at: seen.at} AS seen
 """
 
+# Ingredient amounts per day, dishes ordered without a recipe (so the list never looks complete when it isn't), and
+# orders not approved yet. Recipes are read now, not copied onto the order: the prep list is for buying and cooking.
+PREP_LIST_QUERY = """
+RETURN COLLECT {
+    MATCH (o:Order)-[line:CONTAINS]->(:FoodItem)-[use:USES]->(i:Ingredient)
+    WHERE o.status IN $statuses AND o.event_date >= date($first) AND o.event_date <= date($last)
+    WITH i, o.event_date AS day, sum(line.quantity * use.per_portion) AS amount
+    RETURN {id: i.id, name_no: i.name_no, name_en: i.name_en, unit: i.unit, day: toString(day), amount: amount}
+} AS amounts,
+COLLECT {
+    MATCH (o:Order)-[line:CONTAINS]->(f:FoodItem)
+    WHERE o.status IN $statuses AND o.event_date >= date($first) AND o.event_date <= date($last)
+      AND NOT EXISTS { (f)-[:USES]->() }
+    WITH f, sum(line.quantity) AS portions
+    RETURN {name_no: f.name_no, name_en: f.name_en, portions: portions} ORDER BY f.name_no
+} AS missing,
+COUNT {
+    MATCH (o:Order {status: 'submitted'})
+    WHERE o.event_date >= date($first) AND o.event_date <= date($last)
+} AS unapproved
+"""
+
 DRIVER_DAY_QUERY = """
 MATCH (c:Customer)-[:PLACED]->(o:Order {event_date: date($day)})-[:FOR_EVENT]->(e:EventType)
 WHERE o.status IN ['in_preparation', 'delivered']
@@ -61,6 +83,19 @@ def confirm_allergies(order_id: str, staff_email: str) -> bool:
 def allergies_seen(order_id: str) -> dict | None:
     rows = run(ALLERGIES_SEEN_QUERY, order_id=order_id)
     return rows[0]["seen"] if rows else None
+
+
+def prep_list(days: list, statuses) -> dict:
+    """One row per ingredient with its amount on each of `days` and the total."""
+    row = run(PREP_LIST_QUERY, first=str(days[0]), last=str(days[-1]), statuses=list(statuses))[0]
+    columns = [str(d) for d in days]
+    ingredients = {}
+    for a in row["amounts"]:
+        item = ingredients.setdefault(a["id"], {"name_no": a["name_no"], "name_en": a["name_en"], "unit": a["unit"],
+                                                "per_day": [0.0] * len(days), "total": 0.0})
+        item["per_day"][columns.index(a["day"])] += a["amount"]
+        item["total"] += a["amount"]
+    return {"ingredients": list(ingredients.values()), "missing": row["missing"], "unapproved": row["unapproved"]}
 
 
 def driver_day(day) -> list[dict]:

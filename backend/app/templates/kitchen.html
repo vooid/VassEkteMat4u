@@ -5,7 +5,8 @@
 <div class="screen">
 <h1>{{ t("kitchen_heading", date=day) }}</h1>
 {% include "_day_nav.html" %}
-<p class="hint">{{ t("auto_refresh") }}</p>
+<p class="hint">{{ t("auto_refresh") }} <a href="{{ url_for('kitchen.prep') }}">{{ t("prep_list") }} →</a></p>
+{% include "_offline.html" %}
 
 {% for o in rows %}
 <article class="panel screen-order" id="order-{{ o.id }}">

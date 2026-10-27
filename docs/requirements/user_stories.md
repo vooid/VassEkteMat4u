@@ -225,7 +225,7 @@ As **kitchen staff**, I want to confirm that I've seen an order's allergies, so 
 ### US-29 Prep list and offline view · C
 As **kitchen staff**, I want a list of total ingredients for the next 3 days, and today's orders still visible if the internet is down.
 *Source: Mateo interview.*
-- The prep list sums ingredient quantities across orders for the next 3 days. (Needs ingredients and recipes, which aren't in the data model yet.)
+- The prep list sums ingredient quantities across approved orders and orders in preparation for the next 3 days. Dishes without a recipe and orders still waiting for approval are shown, not counted.
 - Today's orders are kept on the tablet and shown when the connection is lost, with a "last updated" time.
 
 ## E7 Delivery
