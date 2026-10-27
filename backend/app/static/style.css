@@ -1,0 +1,80 @@
+/* Ekte Mat – shared styles. Colours from the logo brainstorm: green and ochre. */
+:root {
+  --bg: #faf8f3;
+  --surface: #ffffff;
+  --text: #22261f;
+  --muted: #5d6458;
+  --border: #e3dfd4;
+  --green: #2f5d3a;
+  --green-soft: #e6efe7;
+  --ochre: #b7791f;
+  --ochre-soft: #f7ecd9;
+  --danger: #b42318;
+  --radius: 12px;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  color: var(--text);
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); line-height: 1.5; }
+a { color: var(--green); }
+
+.site-header {
+  display: flex; align-items: center; gap: 16px;
+  padding: 12px 24px; background: var(--green); color: #fff;
+}
+.brand { color: #fff; font-weight: 700; font-size: 1.3rem; text-decoration: none; letter-spacing: .02em; }
+.header-nav { flex: 1; display: flex; gap: 16px; }
+.header-nav a { color: #fff; text-decoration: none; }
+.lang-switch button {
+  background: transparent; color: #fff; border: 1px solid rgba(255,255,255,.6);
+  border-radius: 999px; padding: 4px 14px; font: inherit; cursor: pointer;
+}
+.lang-switch button:hover, .lang-switch button:focus-visible { background: rgba(255,255,255,.15); }
+
+.page { max-width: 1120px; margin: 0 auto; padding: 24px 16px 64px; }
+h1 { margin: 8px 0 4px; font-size: 2rem; }
+.lead { color: var(--muted); margin-top: 0; }
+
+.event-nav { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0 8px; }
+.event-nav a {
+  padding: 6px 14px; border-radius: 999px; background: var(--surface);
+  border: 1px solid var(--border); text-decoration: none; color: var(--text);
+}
+.event-nav a:hover { border-color: var(--green); }
+
+.event-type { margin-top: 40px; scroll-margin-top: 16px; }
+.event-type-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; border-bottom: 2px solid var(--border); }
+.event-type-head h2 { margin: 0 0 8px; }
+.pill { background: var(--ochre-soft); color: #7a4f0f; border-radius: 999px; padding: 2px 12px; font-size: .9rem; }
+
+.cards {
+  list-style: none; padding: 0; margin: 16px 0 0;
+  display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+}
+.card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  overflow: hidden; display: flex; flex-direction: column;
+}
+.card-img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; display: block; }
+.card-img.placeholder {
+  display: flex; align-items: center; justify-content: center;
+  background: repeating-linear-gradient(45deg, var(--green-soft), var(--green-soft) 10px, #dde8de 10px, #dde8de 20px);
+  color: var(--muted); font-size: .9rem;
+}
+.card-body { padding: 12px 16px 16px; display: flex; flex-direction: column; gap: 4px; }
+.card-body h3 { margin: 0; font-size: 1.1rem; }
+.card-body p { margin: 0; }
+.desc { color: var(--muted); }
+.price { font-size: 1.05rem; margin-top: 4px !important; }
+.price strong { font-size: 1.3rem; color: var(--green); }
+.minimum { font-size: .9rem; color: var(--muted); }
+.tags { list-style: none; padding: 0; margin: 4px 0 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.tags li { font-size: .8rem; padding: 2px 10px; border-radius: 999px; background: var(--green-soft); color: var(--green); }
+.allergens { font-size: .85rem; color: var(--muted); margin-top: 4px !important; }
+.allergens .label { font-weight: 600; color: var(--text); }
+.empty { color: var(--muted); font-style: italic; }
+
+@media (max-width: 600px) {
+  .site-header { padding: 10px 16px; }
+  h1 { font-size: 1.6rem; }
+}
