@@ -9,15 +9,24 @@
 <body>
   <header class="site-header">
     <a class="brand" href="{{ url_for('menu.index') }}">Ekte Mat</a>
-    <nav class="header-nav">{% block header_nav %}{% endblock %}</nav>
+    <nav class="header-nav">
+      <a href="{{ url_for('menu.index') }}">{{ t("menu_heading") }}</a>
+      <a href="{{ url_for('cart.view') }}" class="cart-link">{{ t("cart") }}{% if cart_count %} <span class="badge">{{ cart_count }}</span>{% endif %}</a>
+    </nav>
     {% set other = "en" if current_language() == "no" else "no" %}
     <form class="lang-switch" method="post" action="{{ url_for('menu.set_language', lang=other) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <input type="hidden" name="next" value="{{ request.full_path if request.query_string else request.path }}">
       <button type="submit" aria-label="{{ t('language') }}: {{ t('other_language') }}"
               lang="{{ 'en' if other == 'en' else 'nb' }}">{{ t("other_language") }}</button>
     </form>
   </header>
   <main class="page">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for category, message in messages %}
+        <p class="flash flash-{{ category }}" role="{{ 'alert' if category == 'error' else 'status' }}">{{ message }}</p>
+      {% endfor %}
+    {% endwith %}
     {% block content %}{% endblock %}
   </main>
 </body>

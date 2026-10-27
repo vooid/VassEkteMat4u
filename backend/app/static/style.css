@@ -61,7 +61,7 @@ h1 { margin: 8px 0 4px; font-size: 2rem; }
   background: repeating-linear-gradient(45deg, var(--green-soft), var(--green-soft) 10px, #dde8de 10px, #dde8de 20px);
   color: var(--muted); font-size: .9rem;
 }
-.card-body { padding: 12px 16px 16px; display: flex; flex-direction: column; gap: 4px; }
+.card-body { padding: 12px 16px 16px; display: flex; flex-direction: column; gap: 4px; flex: 1; }
 .card-body h3 { margin: 0; font-size: 1.1rem; }
 .card-body p { margin: 0; }
 .desc { color: var(--muted); }
@@ -77,4 +77,48 @@ h1 { margin: 8px 0 4px; font-size: 2rem; }
 @media (max-width: 600px) {
   .site-header { padding: 10px 16px; }
   h1 { font-size: 1.6rem; }
+}
+
+/* Header cart link */
+.badge { display: inline-block; min-width: 1.4em; padding: 0 6px; border-radius: 999px; background: var(--ochre); color: #fff; font-size: .8rem; text-align: center; }
+
+/* Flash messages */
+.flash { padding: 10px 14px; border-radius: 8px; margin: 0 0 16px; border: 1px solid var(--border); background: var(--surface); }
+.flash-success { border-color: #9cc5a5; background: var(--green-soft); }
+.flash-error { border-color: #f0b4ae; background: #fdecea; color: var(--danger); }
+.flash-warning { border-color: #ecd09a; background: var(--ochre-soft); }
+
+/* Buttons and inputs */
+button { font: inherit; cursor: pointer; border-radius: 8px; border: 1px solid var(--green); background: var(--green); color: #fff; padding: 6px 14px; }
+button:hover { filter: brightness(1.1); }
+button:disabled { background: #c9cec5; border-color: #c9cec5; cursor: not-allowed; filter: none; }
+input[type=number] { font: inherit; width: 6em; padding: 5px 8px; border: 1px solid var(--border); border-radius: 8px; background: #fff; }
+.link-button { background: none; border: none; color: var(--green); padding: 0; text-decoration: underline; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* Add-to-cart form on menu cards */
+.add-form { display: flex; align-items: center; gap: 8px; margin-top: auto; padding-top: 10px; flex-wrap: wrap; }
+.add-form label { font-size: .85rem; color: var(--muted); }
+.add-form input { width: 5em; }
+
+/* Cart page */
+.field { display: flex; align-items: center; gap: 12px; margin: 16px 0; }
+.field label { font-weight: 600; }
+.cart-table { width: 100%; border-collapse: collapse; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 12px; }
+.cart-table th, .cart-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: top; }
+.cart-table .num { text-align: right; }
+.cart-table tfoot th, .cart-table tfoot td { border-bottom: none; font-weight: 700; }
+.cart-table .total { font-size: 1.15rem; color: var(--green); white-space: nowrap; }
+.cart-table tr.below-min input { border-color: var(--danger); }
+.hint { font-size: .85rem; color: var(--muted); }
+.check { margin-top: 24px; padding: 16px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+.check h2 { margin: 0 0 8px; font-size: 1.1rem; color: var(--danger); }
+.problems { margin: 0 0 12px; padding-left: 20px; color: var(--danger); }
+.ok { color: var(--green); font-weight: 600; margin: 0 0 12px; }
+.clear-form { margin-top: 16px; }
+
+@media (max-width: 600px) {
+  .cart-table .col-price { display: none; }
+  .cart-table th, .cart-table td { padding: 8px 6px; }
+  .cart-table input[type=number] { width: 4.2em; }
 }

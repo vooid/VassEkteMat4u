@@ -19,10 +19,12 @@ class FakeDriver:
         self.queries = []
         self.rows = []
         self.reachable = True
+        self.handler = None  # optional: handler(query, params) -> rows, for tests that run several queries
 
     def execute_query(self, query, params=None, **kwargs):
         self.queries.append((query, params))
-        return [FakeRecord(r) for r in self.rows], None, None
+        rows = self.handler(query, params or {}) if self.handler else self.rows
+        return [FakeRecord(r) for r in rows], None, None
 
     def verify_connectivity(self):
         if not self.reachable:
@@ -36,5 +38,5 @@ def driver():
 
 @pytest.fixture
 def client(driver):
-    app = create_app({"TESTING": True, "NEO4J_DRIVER": driver})
+    app = create_app({"TESTING": True, "WTF_CSRF_ENABLED": False, "NEO4J_DRIVER": driver})
     return app.test_client()

@@ -36,8 +36,14 @@ RUN_NEO4J_TESTS=1 .venv/bin/python -m pytest
 |---|---|---|
 | `/` | Menu: dishes as cards grouped by event type, with price, minimum order, allergens and diets | US-01 |
 | `POST /language/<no\|en>` | Switches the interface language (stored in the session) | US-02 |
+| `/cart` | Cart: guests, portions per dish, line totals and total, and whether the minimums are met | US-05, US-06 |
+| `POST /cart/add`, `/cart/update`, `/cart/remove/<dish>`, `/cart/clear` | Change the cart (stored in the session) | US-05 |
 
-Each card's minimum order is the larger of the event type's current minimum and the dish's own minimum order quantity.
+Each card's minimum order is the larger of the event type's current minimum and the dish's own minimum order quantity. The cart enforces the same rule per dish, and the number of guests must reach the event type's minimum
+(`app/cart.py`). A cart is for one event type, because an order is.
+
+All HTML forms are protected against cross-site request forgery: include
+`<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">` in every `POST` form.
 
 ## API endpoints
 
@@ -54,6 +60,7 @@ app/
   __init__.py        create_app(): config, Neo4j driver, blueprints
   config.py          settings from environment / .env
   db.py              driver lifecycle + run(query, **params) helper
+  cart.py            cart in the session + minimum-order rules (pure functions)
   i18n.py            Norwegian/English: UI strings (TEXTS) and tr() for _no/_en data fields
   pages/             Flask blueprints that render HTML pages
   routes/            Flask blueprints for the JSON API (HTTP layer, validation)
