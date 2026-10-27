@@ -40,3 +40,23 @@ def driver():
 def client(driver):
     app = create_app({"TESTING": True, "WTF_CSRF_ENABLED": False, "NEO4J_DRIVER": driver})
     return app.test_client()
+
+
+STAFF = {"admin": {"email": "admin@ektemat.test", "name": "Ingrid", "role": "admin"},
+         "kitchen": {"email": "kjokken@ektemat.test", "name": "Mateo", "role": "kitchen"}}
+
+
+def log_in_staff(client, driver, role="admin", fallback=None):
+    """Log the test client in as staff. Staff lookups are answered here; other queries go to `fallback`
+    (a handler) or to driver.rows."""
+    member = STAFF[role]
+
+    def handler(query, params):
+        if "MATCH (s:Staff" in query and "SET o." not in query:
+            return [{"s": member}] if params.get("email") == member["email"] else []
+        return fallback(query, params) if fallback else driver.rows
+    driver.handler = handler
+    with client.session_transaction() as s:
+        s["_user_id"] = f"staff:{member['email']}"
+        s["_fresh"] = True
+    return member

@@ -1,5 +1,6 @@
 from flask import Blueprint, abort, current_app, jsonify, request
 
+from ..auth import api_staff_required
 from ..repositories import event_types
 
 bp = Blueprint("event_types", __name__)
@@ -11,6 +12,7 @@ def list_event_types():
 
 
 @bp.put("/<event_type_id>/minimum")
+@api_staff_required("admin")
 def update_minimum(event_type_id: str):
     """Admin: change an event type's minimum guests. Existing orders keep the minimum saved on them."""
     body = request.get_json(silent=True) or {}

@@ -18,6 +18,6 @@ def index():
 def set_language(lang: str):
     if lang in LANGUAGES:
         session["lang"] = lang
-        if current_user.is_authenticated:
+        if current_user.is_authenticated and not current_user.is_staff:
             customers.set_language(current_user.email, lang)  # US-02: saved on the account
     return redirect(safe_next(request.form.get("next")))

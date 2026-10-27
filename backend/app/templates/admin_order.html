@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}{{ t("order_heading", id=order.id) }} – Ekte Mat{% endblock %}
+{% block content %}
+<p><a href="{{ url_for('admin.order_list') }}">← {{ t("admin_orders") }}</a></p>
+<h1>{{ t("order_heading", id=order.id) }}</h1>
+<p class="lead">
+  <span class="status status-{{ order.status }}">{{ t("status_" ~ order.status) }}</span>
+  <span class="pill">{{ t("payment") }}: {{ t("payment_" ~ order.payment_status) }} ({{ t("option_" ~ order.payment_option) }})</span>
+  {% if locked and order.status not in ("delivered", "cancelled", "rejected") %}<span class="pill">{{ t("locked") }}</span>{% endif %}
+</p>
+
+<section class="panel actions">
+  <h2>{{ t("actions") }}</h2>
+  {% if capacity.over and "approved" in actions %}
+  <p class="flash flash-warning" role="alert">{{ t("capacity_warning", total=capacity.total, limit=capacity.limit) }}</p>
+  {% endif %}
+  {% if order.status not in ("delivered", "cancelled", "rejected") %}
+  <p class="hint">{{ t("capacity_line", booked=capacity.booked, total=capacity.total, limit=capacity.limit) }}</p>
+  {% endif %}
+
+  {% if "approved" in actions %}
+  <form method="post" action="{{ url_for('admin.change_status', order_id=order.id) }}" class="inline-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="to" value="approved">
+    <button type="submit">{{ t("approve") }}</button>
+  </form>
+  {% endif %}
+  {% if "rejected" in actions %}
+  <form method="post" action="{{ url_for('admin.change_status', order_id=order.id) }}" class="stack reject-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="to" value="rejected">
+    <label for="reason">{{ t("reject_reason") }}</label>
+    <textarea id="reason" name="reason" rows="2" required maxlength="500"></textarea>
+    <button type="submit" class="danger">{{ t("reject") }}</button>
+  </form>
+  {% endif %}
+  {% if "in_preparation" in actions %}
+  <form method="post" action="{{ url_for('admin.change_status', order_id=order.id) }}" class="inline-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="to" value="in_preparation">
+    <button type="submit">{{ t("release_to_kitchen") }}</button>
+  </form>
+  {% elif order.status == "approved" %}
+  <p class="hint">{{ t("release_after_lock", days=lock_days) }}</p>
+  {% endif %}
+  {% if "delivered" in actions %}
+  <form method="post" action="{{ url_for('admin.change_status', order_id=order.id) }}" class="inline-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="to" value="delivered">
+    <button type="submit">{{ t("mark_delivered") }}</button>
+  </form>
+  {% endif %}
+  {% if not actions and order.status != "approved" %}<p class="hint">{{ t("no_status_actions") }}</p>{% endif %}
+
+  {% if payment_actions %}
+  <div class="payment-actions">
+    <span>{{ t("payment") }}:</span>
+    {% for p in payment_actions %}
+    <form method="post" action="{{ url_for('admin.change_payment', order_id=order.id) }}" class="inline-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="to" value="{{ p }}">
+      <button type="submit" class="secondary">{{ t("mark_payment_" ~ p) }}</button>
+    </form>
+    {% endfor %}
+  </div>
+  {% endif %}
+</section>
+
+<section class="panel">
+  <h2>{{ t("customer") }}</h2>
+  <dl class="facts">
+    <dt>{{ t("name") }}</dt><dd>{{ customer.name }}</dd>
+    <dt>{{ t("email") }}</dt><dd><a href="mailto:{{ customer.email }}">{{ customer.email }}</a></dd>
+    {% if customer.phone %}<dt>{{ t("phone") }}</dt><dd><a href="tel:{{ customer.phone }}">{{ customer.phone }}</a></dd>{% endif %}
+    <dt>{{ t("language") }}</dt><dd>{{ "Norsk" if customer.language == "no" else "English" }}</dd>
+  </dl>
+</section>
+
+{% include "_order_details.html" %}
+{% endblock %}

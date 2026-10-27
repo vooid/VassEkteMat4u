@@ -144,6 +144,48 @@ TEXTS = {
         "outbox_intro": "E-post blir ikke sendt i denne versjonen. Her er det som ville blitt sendt.",
         "outbox_empty": "Ingen e-post ennå.",
         "to": "Til",
+        "staff_login": "Innlogging for ansatte",
+        "staff_login_hint": "For Ekte Mat-ansatte. Kunder bruker den vanlige innloggingen.",
+        "admin_orders": "Ordrer",
+        "event_types": "Arrangementstyper",
+        "event_types_intro": "Minste antall gjester per type arrangement (1–{max}). Endringer gjelder nye bestillinger; innsendte bestillinger beholder minstekravet sitt.",
+        "minimum_guests": "Minste antall gjester",
+        "save": "Lagre",
+        "minimum_out_of_range": "Minstekravet må være et helt tall fra 1 til {max}.",
+        "minimum_saved": "Minstekravet er lagret.",
+        "from_date": "Fra dato",
+        "to_date": "Til dato",
+        "filter": "Filtrer",
+        "reset_filter": "Nullstill",
+        "orders_found": "{n} bestillinger",
+        "customer": "Kunde",
+        "booked_that_day": "Booket dagen",
+        "booked_that_day_hint": "Gjester i godkjente bestillinger og bestillinger under forberedelse samme dag",
+        "no_matching_orders": "Ingen bestillinger passer filteret.",
+        "locked": "Låst",
+        "actions": "Behandle",
+        "capacity_warning": "Kapasitet: med denne bestillingen blir det {total} gjester denne dagen, over grensen på {limit}.",
+        "capacity_line": "Andre godkjente bestillinger denne dagen: {booked} gjester. Med denne: {total} av {limit}.",
+        "approve": "Godkjenn",
+        "reject": "Avvis",
+        "reject_reason": "Grunn til avvisning (sendes til kunden)",
+        "release_to_kitchen": "Send til kjøkkenet",
+        "release_after_lock": "Kan sendes til kjøkkenet når det er {days} dager eller mindre til arrangementet.",
+        "mark_delivered": "Merk som levert",
+        "no_status_actions": "Status kan ikke endres.",
+        "mark_payment_invoiced": "Merk som fakturert",
+        "mark_payment_paid": "Merk som betalt",
+        "reason": "Grunn",
+        "change_not_allowed": "Denne endringen er ikke tillatt nå.",
+        "reason_required": "Skriv en grunn til avvisningen.",
+        "reason_too_long": "Grunnen kan ha høyst {max} tegn.",
+        "changed_meanwhile": "Noen andre endret bestillingen i mellomtiden. Se over og prøv igjen.",
+        "status_changed": "Status er endret til «{status}».",
+        "payment_changed": "Betalingsstatus er endret til «{status}».",
+        "mail_approved_subject": "Ekte Mat: bestilling {id} er godkjent",
+        "mail_approved_body": "Hei {name},\n\nBestilling {id} ({event}, {date}) er godkjent. Vi gleder oss!\n\nSe bestillingen: {url}\n\nHilsen Ekte Mat",
+        "mail_rejected_subject": "Ekte Mat: bestilling {id} er avvist",
+        "mail_rejected_body": "Hei {name},\n\nDessverre kan vi ikke ta bestilling {id} ({event}, {date}).\n\nGrunn: {reason}\n\nTa gjerne kontakt hvis du har spørsmål.\nSe bestillingen: {url}\n\nHilsen Ekte Mat",
     },
     "en": {
         "site_title": "Ekte Mat – catering in Bergen",
@@ -276,6 +318,48 @@ TEXTS = {
         "outbox_intro": "E-mail isn't sent in this version. This is what would have been sent.",
         "outbox_empty": "No e-mail yet.",
         "to": "To",
+        "staff_login": "Staff login",
+        "staff_login_hint": "For Ekte Mat staff. Customers use the normal login.",
+        "admin_orders": "Orders",
+        "event_types": "Event types",
+        "event_types_intro": "Minimum guests per type of event (1–{max}). Changes apply to new orders; submitted orders keep their minimum.",
+        "minimum_guests": "Minimum guests",
+        "save": "Save",
+        "minimum_out_of_range": "The minimum must be a whole number from 1 to {max}.",
+        "minimum_saved": "The minimum is saved.",
+        "from_date": "From date",
+        "to_date": "To date",
+        "filter": "Filter",
+        "reset_filter": "Reset",
+        "orders_found": "{n} orders",
+        "customer": "Customer",
+        "booked_that_day": "Booked that day",
+        "booked_that_day_hint": "Guests in approved and in-preparation orders on the same day",
+        "no_matching_orders": "No orders match the filter.",
+        "locked": "Locked",
+        "actions": "Actions",
+        "capacity_warning": "Capacity: with this order there will be {total} guests that day, above the limit of {limit}.",
+        "capacity_line": "Other approved orders that day: {booked} guests. With this one: {total} of {limit}.",
+        "approve": "Approve",
+        "reject": "Reject",
+        "reject_reason": "Reason for rejecting (sent to the customer)",
+        "release_to_kitchen": "Release to kitchen",
+        "release_after_lock": "Can be released to the kitchen when the event is {days} days away or less.",
+        "mark_delivered": "Mark as delivered",
+        "no_status_actions": "The status can't be changed.",
+        "mark_payment_invoiced": "Mark as invoiced",
+        "mark_payment_paid": "Mark as paid",
+        "reason": "Reason",
+        "change_not_allowed": "This change isn't allowed now.",
+        "reason_required": "Enter a reason for rejecting.",
+        "reason_too_long": "The reason can be at most {max} characters.",
+        "changed_meanwhile": "Someone else changed the order in the meantime. Check it and try again.",
+        "status_changed": "Status changed to \"{status}\".",
+        "payment_changed": "Payment status changed to \"{status}\".",
+        "mail_approved_subject": "Ekte Mat: order {id} approved",
+        "mail_approved_body": "Hi {name},\n\nOrder {id} ({event}, {date}) is approved. We're looking forward to it!\n\nSee your order: {url}\n\nBest regards,\nEkte Mat",
+        "mail_rejected_subject": "Ekte Mat: order {id} rejected",
+        "mail_rejected_body": "Hi {name},\n\nUnfortunately we can't take order {id} ({event}, {date}).\n\nReason: {reason}\n\nPlease get in touch if you have any questions.\nSee your order: {url}\n\nBest regards,\nEkte Mat",
     },
 }
 
@@ -286,8 +370,14 @@ def current_language() -> str:
 
 def t(key: str, **kwargs) -> str:
     """Translate a UI string into the current language."""
-    text = TEXTS[current_language()].get(key) or TEXTS[DEFAULT_LANGUAGE].get(key, key)
-    kwargs = {k: format_date(v) if isinstance(v, date) else v for k, v in kwargs.items()}
+    return t_in(current_language(), key, **kwargs)
+
+
+def t_in(lang: str | None, key: str, **kwargs) -> str:
+    """Translate into a given language, e.g. the customer's for an e-mail sent by the admin."""
+    lang = lang if lang in LANGUAGES else DEFAULT_LANGUAGE
+    text = TEXTS[lang].get(key) or TEXTS[DEFAULT_LANGUAGE].get(key, key)
+    kwargs = {k: format_date(v, lang) if isinstance(v, date) else v for k, v in kwargs.items()}
     return text.format(**kwargs) if kwargs else text
 
 
@@ -296,11 +386,11 @@ def _native(value):
     return value.to_native() if hasattr(value, "to_native") else value
 
 
-def format_date(value) -> str:
+def format_date(value, lang: str | None = None) -> str:
     d = _native(value)
     if d is None:
         return ""
-    if current_language() == "en":
+    if (lang or current_language()) == "en":
         return f"{d.day} {MONTHS_EN[d.month - 1]} {d.year}"
     return d.strftime("%d.%m.%Y")
 

@@ -1,9 +1,10 @@
 """Checkout (US-07) and the customer's orders (US-08)."""
 from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
-from flask_login import current_user, login_required
+from flask_login import current_user
 from werkzeug.datastructures import MultiDict
 
 from .. import cart, mail, orders
+from ..auth import customer_required
 from ..i18n import format_date, t, tr
 from ..repositories import orders as orders_repo
 from .cart import load as load_cart
@@ -12,7 +13,7 @@ bp = Blueprint("orders", __name__)
 
 
 @bp.route("/order", methods=["GET", "POST"])
-@login_required
+@customer_required
 def checkout():
     c, event_type, lines = load_cart()
     if not event_type or cart.problems(c, event_type, lines):
@@ -54,14 +55,14 @@ def _send_confirmation(created: dict, event_type: dict, guests: int, details: di
 
 
 @bp.get("/orders")
-@login_required
+@customer_required
 def history():
     current, past = orders.split_current_past(orders_repo.list_for_customer(current_user.email))
     return render_template("orders.html", current=current, past=past)
 
 
 @bp.get("/orders/<order_id>")
-@login_required
+@customer_required
 def detail(order_id: str):
     order = orders_repo.get_for_customer(current_user.email, order_id)
     if order is None:
