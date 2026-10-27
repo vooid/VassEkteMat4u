@@ -1,10 +1,10 @@
 """HTML pages for the public menu (US-01) and language switch (US-02)."""
-from urllib.parse import urlparse
-
-from flask import Blueprint, redirect, render_template, request, session, url_for
+from flask import Blueprint, redirect, render_template, request, session
+from flask_login import current_user
 
 from ..i18n import LANGUAGES
-from ..repositories import menu
+from ..repositories import customers, menu
+from ..urls import safe_next
 
 bp = Blueprint("menu", __name__)
 
@@ -18,8 +18,6 @@ def index():
 def set_language(lang: str):
     if lang in LANGUAGES:
         session["lang"] = lang
-    # Only redirect back within this site.
-    target = request.form.get("next", "")
-    if not target.startswith("/") or target.startswith("//") or urlparse(target).netloc:
-        target = url_for("menu.index")
-    return redirect(target)
+        if current_user.is_authenticated:
+            customers.set_language(current_user.email, lang)  # US-02: saved on the account
+    return redirect(safe_next(request.form.get("next")))

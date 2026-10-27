@@ -83,8 +83,13 @@
     {% else %}
       <p class="ok">{{ t("cart_ok") }}</p>
     {% endif %}
-    <button type="button" disabled title="{{ t('order_coming') }}">{{ t("continue_to_order") }}</button>
-    <p class="hint">{{ t("order_coming") }}</p>
+    {% if not current_user.is_authenticated %}
+      <a class="button" href="{{ url_for('account.login', next=url_for('cart.view')) }}">{{ t("log_in_to_order") }}</a>
+      <p class="hint">{{ t("cart_kept_on_login") }}</p>
+    {% else %}
+      <button type="button" disabled title="{{ t('order_coming') }}">{{ t("continue_to_order") }}</button>
+      <p class="hint">{{ t("order_coming") }}</p>
+    {% endif %}
   </section>
 
   <form method="post" action="{{ url_for('cart.clear') }}" class="clear-form">

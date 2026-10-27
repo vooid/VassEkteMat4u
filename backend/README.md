@@ -38,9 +38,16 @@ RUN_NEO4J_TESTS=1 .venv/bin/python -m pytest
 | `POST /language/<no\|en>` | Switches the interface language (stored in the session) | US-02 |
 | `/cart` | Cart: guests, portions per dish, line totals and total, and whether the minimums are met | US-05, US-06 |
 | `POST /cart/add`, `/cart/update`, `/cart/remove/<dish>`, `/cart/clear` | Change the cart (stored in the session) | US-05 |
+| `/register` | Create a customer account (name, e-mail, phone, password ≥ 8 characters); logs in and keeps the cart | US-04 |
+| `/login` | Log in with e-mail and password; a failed login gives one generic message | US-04 |
+| `POST /logout` | Log out; the cart is cleared, the language is kept | US-04 |
 
 Each card's minimum order is the larger of the event type's current minimum and the dish's own minimum order quantity. The cart enforces the same rule per dish, and the number of guests must reach the event type's minimum
 (`app/cart.py`). A cart is for one event type, because an order is.
+
+Passwords are hashed with Werkzeug (scrypt). There is no e-mail password reset in this version (decision 2026-10-27).
+A logged-in customer's language choice is saved on the account and restored at the next login. Redirects after login
+only go to paths on this site (`app/urls.py`).
 
 All HTML forms are protected against cross-site request forgery: include
 `<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">` in every `POST` form.
@@ -61,6 +68,8 @@ app/
   config.py          settings from environment / .env
   db.py              driver lifecycle + run(query, **params) helper
   cart.py            cart in the session + minimum-order rules (pure functions)
+  auth.py            Flask-Login setup, customer user, registration checks, password hashing
+  urls.py            safe_next(): redirect only to local paths
   i18n.py            Norwegian/English: UI strings (TEXTS) and tr() for _no/_en data fields
   pages/             Flask blueprints that render HTML pages
   routes/            Flask blueprints for the JSON API (HTTP layer, validation)
@@ -76,11 +85,11 @@ To add a feature: put its Cypher in `repositories/<name>.py`, its pages in `page
 
 ## Graph model
 
-The full data model is in [`docs/diagrams/data_model.md`](../docs/diagrams/data_model.md). Only `:EventType` is
-implemented so far; the seed script already creates the uniqueness constraints for `EventType`, `FoodItem`, `Customer`
+The full data model is in [`docs/diagrams/data_model.md`](../docs/diagrams/data_model.md). `:EventType`, `:FoodItem`
+(with allergens, diets, images) and `:Customer` are implemented so far; the seed script already creates the uniqueness constraints for `EventType`, `FoodItem`, `Customer`
 and `Order`.
 
 ## Before production
 
-- **Secrets:** never commit `.env`. Set a long random `SECRET_KEY` (it signs the session cookie). Never publish the Claude API key (`CLAUDE.md`).
+- **Secrets:** never commit `.env`. Set a long random `SECRET_KEY` (it signs the session cookie). Serve over HTTPS and set `SESSION_COOKIE_SECURE=1`. Never publish the Claude API key (`CLAUDE.md`).
 - **Hosting:** the case requires data in the EU/EEA and running costs under 3 000 NOK/month (`docs/context/04_vision_scope_constraints/`). Check the region and price of any hosted Neo4j (e.g. Neo4j AuraDB) before choosing, and get a data processing agreement (GDPR note).
