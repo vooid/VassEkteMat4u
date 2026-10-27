@@ -90,7 +90,8 @@ RUN_NEO4J_TESTS=1 .venv/bin/python -m pytest
 | `/staff/login` | Login for Ekte Mat staff (separate from customer login); admin → orders, kitchen → kitchen screen, driver → driver screen | – |
 | `/staff/pin` | PIN login for kitchen and driver staff: pick your name, type your PIN. Only on approved devices (403 elsewhere) | US-27 |
 | `/admin/devices` | Admin: approve the device you're using for PIN login, see when each device was last used, remove devices | US-27 |
-| `/kitchen?day=YYYY-MM-DD` | Kitchen screen (kitchen and admin), today by default: orders in preparation, portions per dish, guest groups with allergies in red, an "Allergies seen" button that stores who and when. Refreshes every minute | US-27, US-28 |
+| `/kitchen?day=YYYY-MM-DD` | Kitchen screen (kitchen and admin), today by default: orders in preparation, portions per dish, guest groups with allergies in red, an "Allergies seen" button that stores who and when. Refreshes every minute. On the kitchen tablet the last copy is kept and shown when the network is down, with a warning and the time it was saved | US-27 – US-29 |
+| `/kitchen/prep` | Prep list (kitchen and admin): kilos, litres and pieces of each ingredient for approved orders and orders in preparation today and the next 2 days, per day and in total; dishes without a recipe and orders waiting for approval are listed, not counted | US-29 |
 | `/driver?day=YYYY-MM-DD` | Driver screen (driver and admin): the day's orders in preparation with address, map link, customer's phone and delivery notes; "Mark as delivered" | US-30 |
 | `/admin/questions` | Admin: unanswered questions, newest first, linking to the order | US-26 |
 | `/admin/orders` | Admin: all orders, filtered by status (default: submitted, approved, in preparation) and event-date range, with guests already booked that day | US-21, US-23 |
@@ -164,4 +165,6 @@ The full data model is in [`docs/diagrams/data_model.md`](../docs/diagrams/data_
 
 - **Secrets:** never commit `.env`. Set a long random `SECRET_KEY` (it signs the session cookie). Serve over HTTPS and set `SESSION_COOKIE_SECURE=1`. Never publish the Claude API key (`CLAUDE.md`).
 - **PIN login:** approve only Ekte Mat's own tablet and the drivers' work phones under Devices, remove a device that is lost or replaced, and change a PIN (`flask set-pin`) when someone leaves. Serve over HTTPS so the device cookie can't be read on the way.
+- **Offline kitchen screen:** works only over HTTPS (or on localhost), because browsers only run service workers there. The tablet keeps the last kitchen pages, delivery notes included, until someone logs out.
+- **Recipes:** the ingredients and amounts per portion are sample data (`scripts/seed.py`); Mateo must replace them before the prep list is used. There is no page to edit recipes yet (it belongs with the menu admin, US-18).
 - **Hosting:** the case requires data in the EU/EEA and running costs under 3 000 NOK/month (`docs/context/04_vision_scope_constraints/`). Check the region and price of any hosted Neo4j (e.g. Neo4j AuraDB) before choosing, and get a data processing agreement (GDPR note).

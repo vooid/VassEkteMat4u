@@ -7,7 +7,8 @@ each association is a **relationship type**. GitHub renders the Mermaid diagram 
 Built from the [user stories](../requirements/user_stories.md), the [state diagrams](state_order.md) and the
 [decisions log](../decisions.md) (2026-10-27: basic login, NO/EN interface, no deposits, corporate accounts, kitchen and
 driver screens). Storage is Neo4j (`CLAUDE.md`). Implemented in the backend so far: `:EventType`, `:FoodItem`,
-`:Allergen`, `:Diet`, `:Customer`, `:Staff`, `:Order`, `:GuestGroup` and `:StatusChange`.
+`:Allergen`, `:Diet`, `:Ingredient`, `:Customer`, `:Staff`, `:Order`, `:GuestGroup`, `:StatusChange`, `:Question`,
+`:Answer` and `:PinDevice`.
 
 ```mermaid
 classDiagram
@@ -28,6 +29,12 @@ classDiagram
         int price_nok
         int min_order_qty
         bool published
+    }
+    class Ingredient {
+        String id
+        String name_no
+        String name_en
+        String unit
     }
     class Image {
         String id
@@ -126,6 +133,7 @@ classDiagram
     FoodItem "*" --> "*" Allergen : CONTAINS_ALLERGEN
     FoodItem "*" --> "*" Diet : FITS_DIET
     FoodItem "1" --> "*" Image : HAS_IMAGE
+    FoodItem "*" --> "*" Ingredient : USES - per_portion
     Customer "*" --> "0..1" Company : MEMBER_OF - role
     Customer "1" --> "*" Order : PLACED
     Customer "0..1" --> "*" Order : APPROVED - at
@@ -154,6 +162,7 @@ classDiagram
 |---|---|---|---|
 | `:EventType` | Birthday, wedding, conference, … with its current minimum guests | `min_guests` 1–265; text in NO and EN | US-01, US-06, US-20 |
 | `:FoodItem` | A dish or menu card | Text in NO and EN; only `published` items are shown | US-01, US-18 |
+| `:Ingredient` | Something the kitchen buys: cod, cream, eggs, … | `unit` `kg`, `l` or `pcs`; `USES.per_portion` is the amount in that unit for one portion of a dish. Sample data for now | US-29 |
 | `:Image` | Photo of a food item | `status`: `pending`, `approved`, `rejected`; only approved are public | US-19 |
 | `:Allergen` | Fish, milk, gluten, nuts, celery, mustard, … | Fixed list, seeded | US-01, US-07, US-27 |
 | `:Diet` | Vegetarian, vegan, gluten-free, halal, … | Fixed list, seeded | US-01, US-03, US-07 |
@@ -175,6 +184,7 @@ classDiagram
 | `Order.payment_option` | `invoice`, `vipps`, `bank_transfer` |
 | `Order.event_time` | `HH:MM`, 06:00–23:00 (placeholder opening hours); missing on orders placed before it was added |
 | `MEMBER_OF.role` | `orderer`, `approver` |
+| `Ingredient.unit` | `kg`, `l`, `pcs` |
 | `Staff.role` | `admin`, `kitchen`, `driver` |
 | `Image.status` | `pending`, `approved`, `rejected` |
 
@@ -198,6 +208,7 @@ CREATE CONSTRAINT order_id        IF NOT EXISTS FOR (o:Order)     REQUIRE o.id I
 CREATE CONSTRAINT company_id      IF NOT EXISTS FOR (c:Company)   REQUIRE c.id IS UNIQUE;
 CREATE CONSTRAINT staff_email     IF NOT EXISTS FOR (s:Staff)     REQUIRE s.email IS UNIQUE;   // exists
 CREATE CONSTRAINT allergen_code   IF NOT EXISTS FOR (a:Allergen)  REQUIRE a.code IS UNIQUE;   // exists
+CREATE CONSTRAINT ingredient_id   IF NOT EXISTS FOR (i:Ingredient) REQUIRE i.id IS UNIQUE;  // exists
 CREATE CONSTRAINT diet_code       IF NOT EXISTS FOR (d:Diet)      REQUIRE d.code IS UNIQUE;   // exists
 CREATE CONSTRAINT image_id        IF NOT EXISTS FOR (i:Image)     REQUIRE i.id IS UNIQUE;   // exists
 CREATE CONSTRAINT question_id     IF NOT EXISTS FOR (q:Question)  REQUIRE q.id IS UNIQUE;   // exists
@@ -218,6 +229,14 @@ OPTIONAL MATCH (o)-[:HAS_GROUP]->(g:GuestGroup)-[:HAS_ALLERGY]->(a:Allergen)
 RETURN o.id, o.guests, dishes, collect(DISTINCT {group: g.position, count: g.count, allergen: a.code}) AS allergies
 ```
 
+Prep list (US-29): each ingredient's amount per day for approved orders and orders in preparation.
+
+```cypher
+MATCH (o:Order)-[line:CONTAINS]->(:FoodItem)-[use:USES]->(i:Ingredient)
+WHERE o.status IN ['approved', 'in_preparation'] AND o.event_date >= date($first) AND o.event_date <= date($last)
+RETURN i.name_no, i.unit, o.event_date AS day, sum(line.quantity * use.per_portion) AS amount
+```
+
 Guests already booked on a date (US-23 capacity):
 
 ```cypher
@@ -234,7 +253,7 @@ emptied before production, because it stores personal data.
 
 ## Not in the model yet
 
-- **Ingredients, recipes and suppliers** for Mateo's prep list and food origin (US-29, Ingrid's "where the lamb comes from"): `(:FoodItem)-[:USES {kg_per_portion}]->(:Ingredient)-[:SUPPLIED_BY]->(:Supplier)`.
+- **Suppliers** for food origin (Ingrid's "where the lamb comes from"): `(:Ingredient)-[:SUPPLIED_BY]->(:Supplier)`.
 - **Invoices** as their own nodes, if the monthly corporate invoice needs more than a payment status per order.
 - **Deposits** (decision 2026-10-27): a `deposit_paid` payment status and deposit amount on `:Order`.
 - **Password reset tokens** (decision 2026-10-27).

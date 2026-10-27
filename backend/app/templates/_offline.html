@@ -1,0 +1,21 @@
+{# Kitchen pages (US-29): when they were made, a warning when that copy is old or the tablet is offline, and the
+   service worker that keeps the last copy on the kitchen tablet. #}
+<p class="hint" id="updated" data-updated="{{ updated_at.isoformat() }}">{{ t("updated_at", time=format_datetime(updated_at)) }}</p>
+<p class="flash flash-error" id="offline-warning" role="alert" hidden>{{ t("offline_warning", time=format_datetime(updated_at)) }}</p>
+<script>
+(() => {
+  const updated = Date.parse(document.getElementById("updated").dataset.updated);
+  const warning = document.getElementById("offline-warning");
+  // The page refreshes every minute; a copy older than three minutes means the refreshes are failing.
+  const check = () => { warning.hidden = navigator.onLine && Date.now() - updated < 3 * 60 * 1000; };
+  check();
+  setInterval(check, 15000);
+  addEventListener("online", check);
+  addEventListener("offline", check);
+  {% if current_user.role == "kitchen" %}
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("{{ url_for('kitchen.service_worker') }}", {scope: "{{ url_for('kitchen.index') }}"});
+  }
+  {% endif %}
+})();
+</script>

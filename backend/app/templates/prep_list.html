@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}{{ t("prep_list") }} – Ekte Mat{% endblock %}
+{% block head %}<meta http-equiv="refresh" content="300">{% endblock %}
+{% block content %}
+<div class="screen">
+<p><a href="{{ url_for('kitchen.index') }}">← {{ t("kitchen") }}</a></p>
+<h1>{{ t("prep_heading", first=days[0], last=days[-1]) }}</h1>
+<p class="hint">{{ t("prep_intro", days=prep_days) }}</p>
+{% include "_offline.html" %}
+
+{% if unapproved %}<p class="flash flash-info">{{ t("prep_unapproved", n=unapproved) }}</p>{% endif %}
+
+{% if ingredients %}
+<div class="table-scroll">
+<table class="cart-table prep-table">
+  <thead>
+    <tr>
+      <th scope="col">{{ t("ingredient") }}</th>
+      {% for day in days %}<th scope="col" class="num">{{ t("today") if loop.first else format_date(day) }}</th>{% endfor %}
+      <th scope="col" class="num">{{ t("total") }}</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for i in ingredients %}
+    <tr>
+      <th scope="row">{{ tr(i, "name") }}</th>
+      {% for amount in i.per_day %}<td class="num">{{ format_amount(amount, i.unit) if amount else "–" }}</td>{% endfor %}
+      <td class="num"><strong>{{ format_amount(i.total, i.unit) }}</strong></td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% elif not missing %}
+<p class="empty">{{ t("prep_empty", days=prep_days) }}</p>
+{% endif %}
+
+{% if missing %}
+<div class="flash flash-error" role="alert">
+  <p>{{ t("prep_missing_recipe") }}</p>
+  <ul>{% for dish in missing %}<li>{{ tr(dish, "name") }}: {{ dish.portions }} {{ t("portions").lower() }}</li>{% endfor %}</ul>
+</div>
+{% endif %}
+</div>
+{% endblock %}

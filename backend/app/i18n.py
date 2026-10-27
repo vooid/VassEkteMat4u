@@ -2,6 +2,7 @@
 
 UI strings live in TEXTS; data is stored with _no/_en properties and picked with `tr()`.
 """
+import math
 from datetime import date, datetime
 from zoneinfo import ZoneInfo
 
@@ -262,6 +263,18 @@ TEXTS = {
         "allergies_confirmed": "Bestilling {id}: allergiene er markert som sett.",
         "allergies_not_seen": "Kjøkkenet har ikke bekreftet allergiene ennå.",
         "auto_refresh": "Siden oppdateres hvert minutt.",
+        "prep_list": "Prepliste",
+        "prep_heading": "Prepliste {first} – {last}",
+        "prep_intro": "Sum av ingrediensene for godkjente bestillinger og bestillinger i produksjon de neste {days} dagene.",
+        "prep_unapproved": "Bestillinger som venter på godkjenning, er ikke tatt med: {n}.",
+        "prep_missing_recipe": "Disse rettene har ingen oppskrift ennå og er ikke tatt med:",
+        "prep_empty": "Ingen bestillinger de neste {days} dagene.",
+        "ingredient": "Ingrediens",
+        "unit_kg": "kg",
+        "unit_l": "l",
+        "unit_pcs": "stk",
+        "updated_at": "Oppdatert {time}.",
+        "offline_warning": "Ingen forbindelse. Viser det som var lagret {time}.",
         "open_map": "Åpne i kart",
         "call": "Ring {phone}",
         "delivered_by": "Levert av {by} {at}",
@@ -531,6 +544,18 @@ TEXTS = {
         "allergies_confirmed": "Order {id}: allergies marked as seen.",
         "allergies_not_seen": "The kitchen hasn't confirmed the allergies yet.",
         "auto_refresh": "This page refreshes every minute.",
+        "prep_list": "Prep list",
+        "prep_heading": "Prep list {first} – {last}",
+        "prep_intro": "Ingredients summed over approved orders and orders in preparation for the next {days} days.",
+        "prep_unapproved": "Orders waiting for approval aren't counted: {n}.",
+        "prep_missing_recipe": "These dishes have no recipe yet and aren't counted:",
+        "prep_empty": "No orders in the next {days} days.",
+        "ingredient": "Ingredient",
+        "unit_kg": "kg",
+        "unit_l": "l",
+        "unit_pcs": "pcs",
+        "updated_at": "Updated {time}.",
+        "offline_warning": "No connection. Showing what was saved at {time}.",
         "open_map": "Open in map",
         "call": "Call {phone}",
         "delivered_by": "Delivered by {by} {at}",
@@ -609,6 +634,17 @@ def format_datetime(value) -> str:
     return f"{format_date(dt)} {dt:%H:%M}"
 
 
+def format_amount(value: float, unit: str) -> str:
+    """An ingredient amount on the prep list: pieces rounded up, kilos and litres to two decimals."""
+    if unit == "pcs":
+        text = str(math.ceil(round(value, 6)))
+    else:
+        text = f"{value:.2f}".rstrip("0").rstrip(".")
+        if current_language() == "no":
+            text = text.replace(".", ",")
+    return f"{text} {t('unit_' + unit)}"
+
+
 def tr(obj: dict, field: str) -> str:
     """Pick obj[field_no] or obj[field_en], falling back to Norwegian."""
     return obj.get(f"{field}_{current_language()}") or obj.get(f"{field}_{DEFAULT_LANGUAGE}") or ""
@@ -622,4 +658,4 @@ def init_app(app: Flask) -> None:
         g.html_lang = "nb" if g.lang == "no" else "en"
 
     app.jinja_env.globals.update(t=t, tr=tr, current_language=current_language, format_date=format_date, format_event=format_event,
-                                 format_datetime=format_datetime)
+                                 format_datetime=format_datetime, format_amount=format_amount)

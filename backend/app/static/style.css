@@ -221,3 +221,8 @@ button.secondary { background: #fff; color: var(--green); }
 .screen-links .button { padding: 10px 18px; }
 a.secondary-link { background: var(--surface); color: var(--green); border: 1px solid var(--green); }
 .screen-order .time { background: var(--green); color: #fff; border-radius: 6px; padding: 0 8px; margin-right: 4px; }
+
+/* Prep list (US-29) */
+.prep-table th[scope=row] { font-weight: 400; }
+.prep-table td { white-space: nowrap; }
+.flash p { margin: 0 0 4px; }

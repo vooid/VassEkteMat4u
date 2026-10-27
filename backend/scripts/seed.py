@@ -4,7 +4,9 @@ Run from the backend folder:  python -m scripts.seed
 
 Event-type minimums are placeholder values (decision 2026-10-27). Food items are SAMPLE DATA: the first four come
 from Mateo's autumn lunch menu draft (docs/context/05_reference), the rest are invented so every event type has dishes.
-Existing nodes are never overwritten (ON CREATE), so changes made by the admin survive re-seeding.
+Ingredients and recipes are SAMPLE DATA too (amounts per portion invented for the prep list, US-29); Mateo should
+replace them with real ones. Existing nodes are never overwritten (ON CREATE), so changes made by the admin survive
+re-seeding, and a dish gets its sample recipe only while it has none.
 """
 from app import create_app
 from app.db import run
@@ -69,6 +71,47 @@ FOOD_ITEMS = [
      129, 10, ["corporate-lunch", "conference", "confirmation"], ["fish", "milk", "egg", "gluten", "mustard"], []),
 ]
 
+# id, name_no, name_en, unit (kg, l or pcs)
+INGREDIENTS = [
+    ("cod", "Torskefilet", "Cod fillet", "kg"),
+    ("fish-stock", "Fiskekraft", "Fish stock", "l"),
+    ("cream", "Fløte", "Cream", "l"),
+    ("root-vegetables", "Rotgrønnsaker", "Root vegetables", "kg"),
+    ("sourdough", "Surdeigsbrød", "Sourdough bread", "kg"),
+    ("lamb", "Lammeskulder fra Voss", "Lamb shoulder from Voss", "kg"),
+    ("barley", "Byggryn", "Pearl barley", "kg"),
+    ("butter", "Smør", "Butter", "kg"),
+    ("beetroot", "Rødbeter", "Beetroot", "kg"),
+    ("chickpeas", "Kikerter", "Chickpeas", "kg"),
+    ("goat-cheese", "Geitost fra Hardanger", "Goat cheese from Hardanger", "kg"),
+    ("rakfisk", "Rakfisk", "Rakfisk", "kg"),
+    ("potatoes", "Poteter", "Potatoes", "kg"),
+    ("pinnekjott", "Pinnekjøtt", "Cured lamb ribs", "kg"),
+    ("swede", "Kålrot", "Swede", "kg"),
+    ("eggs", "Egg", "Eggs", "pcs"),
+    ("flour", "Hvetemel", "Wheat flour", "kg"),
+    ("berries", "Bær", "Berries", "kg"),
+    ("smoked-salmon", "Røkelaks", "Smoked salmon", "kg"),
+    ("beef", "Indrefilet av storfe", "Beef tenderloin", "kg"),
+    ("lentils", "Linser", "Lentils", "kg"),
+    ("rice", "Ris", "Rice", "kg"),
+    ("bread", "Brød", "Bread", "kg"),
+]
+
+# food item id -> [(ingredient id, amount per portion in the ingredient's unit)]
+RECIPES = {
+    "fish-soup": [("cod", 0.12), ("fish-stock", 0.25), ("cream", 0.08), ("root-vegetables", 0.1), ("sourdough", 0.06)],
+    "voss-lamb": [("lamb", 0.25), ("barley", 0.07), ("root-vegetables", 0.1), ("butter", 0.02)],
+    "beetroot-salad": [("beetroot", 0.15), ("chickpeas", 0.08), ("goat-cheese", 0.04)],
+    "rakfisk": [("rakfisk", 0.15), ("potatoes", 0.2), ("butter", 0.02)],
+    "pinnekjott": [("pinnekjott", 0.4), ("swede", 0.25), ("potatoes", 0.2), ("butter", 0.03)],
+    "layer-cake": [("eggs", 0.5), ("flour", 0.02), ("cream", 0.08), ("berries", 0.05)],
+    "wedding-menu": [("smoked-salmon", 0.06), ("beef", 0.2), ("potatoes", 0.2), ("cream", 0.1), ("berries", 0.05),
+                     ("eggs", 0.5)],
+    "lentil-stew": [("lentils", 0.08), ("root-vegetables", 0.12), ("rice", 0.08)],
+    "sandwich-platter": [("bread", 0.1), ("smoked-salmon", 0.04), ("eggs", 1), ("butter", 0.02)],
+}
+
 CONSTRAINTS = [
     "CREATE CONSTRAINT event_type_id IF NOT EXISTS FOR (e:EventType) REQUIRE e.id IS UNIQUE",
     "CREATE CONSTRAINT food_item_id IF NOT EXISTS FOR (f:FoodItem) REQUIRE f.id IS UNIQUE",
@@ -77,6 +120,7 @@ CONSTRAINTS = [
     "CREATE CONSTRAINT question_id IF NOT EXISTS FOR (q:Question) REQUIRE q.id IS UNIQUE",
     "CREATE CONSTRAINT order_id IF NOT EXISTS FOR (o:Order) REQUIRE o.id IS UNIQUE",
     "CREATE CONSTRAINT allergen_code IF NOT EXISTS FOR (a:Allergen) REQUIRE a.code IS UNIQUE",
+    "CREATE CONSTRAINT ingredient_id IF NOT EXISTS FOR (i:Ingredient) REQUIRE i.id IS UNIQUE",
     "CREATE CONSTRAINT diet_code IF NOT EXISTS FOR (d:Diet) REQUIRE d.code IS UNIQUE",
     "CREATE CONSTRAINT image_id IF NOT EXISTS FOR (i:Image) REQUIRE i.id IS UNIQUE",
     "CREATE CONSTRAINT pin_device_token IF NOT EXISTS FOR (d:PinDevice) REQUIRE d.token_hash IS UNIQUE",
@@ -122,13 +166,28 @@ def seed() -> None:
             id=id_, name_no=name_no, name_en=name_en, desc_no=desc_no, desc_en=desc_en,
             price=price, min_qty=min_qty, event_types=event_types, allergens=allergens, diets=diets,
         )
+    for id_, name_no, name_en, unit in INGREDIENTS:
+        run(
+            "MERGE (i:Ingredient {id: $id}) ON CREATE SET i.name_no = $no, i.name_en = $en, i.unit = $unit",
+            id=id_, no=name_no, en=name_en, unit=unit,
+        )
+    for food_id, uses in RECIPES.items():
+        run(
+            """
+            MATCH (f:FoodItem {id: $id}) WHERE NOT EXISTS { (f)-[:USES]->() }
+            UNWIND $uses AS use
+            MATCH (i:Ingredient {id: use[0]})
+            CREATE (f)-[:USES {per_portion: use[1]}]->(i)
+            """,
+            id=food_id, uses=[[ingredient, float(amount)] for ingredient, amount in uses],
+        )
 
 
 def main() -> None:
     with create_app().app_context():
         seed()
-    print(f"Seeded {len(EVENT_TYPES)} event types, {len(ALLERGENS)} allergens, {len(DIETS)} diets "
-          f"and {len(FOOD_ITEMS)} sample food items.")
+    print(f"Seeded {len(EVENT_TYPES)} event types, {len(ALLERGENS)} allergens, {len(DIETS)} diets, "
+          f"{len(FOOD_ITEMS)} sample food items and {len(INGREDIENTS)} sample ingredients.")
 
 
 if __name__ == "__main__":
