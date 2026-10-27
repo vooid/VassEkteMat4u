@@ -3,7 +3,7 @@ import click
 from flask import Flask
 from flask.cli import with_appcontext
 
-from . import auth
+from . import auth, jobs, orders
 from .repositories import staff
 
 
@@ -26,5 +26,19 @@ def create_staff(email: str, name: str, role: str, password: str) -> None:
     click.echo(f"Created {role} account for {email}.")
 
 
+@click.command("run-daily-jobs")
+@click.option("--date", "on", help="Run as if today were YYYY-MM-DD (for testing). Default: today in Norway.")
+@with_appcontext
+def run_daily_jobs(on: str | None) -> None:
+    """Send 7-day reminders and lock orders 5 days before the event. Run once a day."""
+    day = orders.parse_date(on) if on else None
+    if on and day is None:
+        raise click.BadParameter("use YYYY-MM-DD", param_hint="--date")
+    result = jobs.run_daily(day)
+    click.echo(f"Reminders sent: {len(result['reminded'])} {' '.join(result['reminded'])}".rstrip())
+    click.echo(f"Orders locked: {len(result['locked'])} {' '.join(result['locked'])}".rstrip())
+
+
 def init_app(app: Flask) -> None:
     app.cli.add_command(create_staff)
+    app.cli.add_command(run_daily_jobs)

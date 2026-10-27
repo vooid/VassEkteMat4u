@@ -75,6 +75,7 @@ classDiagram
         String cost_centre
         int total_nok
         DateTime created_at
+        DateTime changed_at
         DateTime reminder_sent_at
         DateTime locked_at
         DateTime payment_changed_at

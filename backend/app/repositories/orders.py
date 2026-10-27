@@ -84,6 +84,92 @@ DETAIL_QUERY = """
 MATCH (:Customer {email: $email})-[:PLACED]->(o:Order {id: $order_id})-[:FOR_EVENT]->(e:EventType)
 RETURN """ + ORDER_PROJECTION + " AS order"
 
+# --- customer changes and cancellation (US-09, US-10) ---
+
+# Dishes the customer can choose when changing: the event type's published dishes, plus any already on the order
+# (kept at the price they were ordered at, even if the dish has been unpublished since).
+CHANGE_OPTIONS_QUERY = """
+MATCH (:Customer {email: $email})-[:PLACED]->(o:Order {id: $order_id})-[:FOR_EVENT]->(e:EventType)
+RETURN COLLECT {
+    MATCH (e)<-[:SUITS]-(f:FoodItem)
+    WHERE f.published OR EXISTS { (o)-[:CONTAINS]->(f) }
+    OPTIONAL MATCH (o)-[line:CONTAINS]->(f)
+    RETURN f {.id, .name_no, .name_en, .min_order_qty, quantity: line.quantity,
+              price_nok: coalesce(line.unit_price_nok, f.price_nok)}
+    ORDER BY f.name_no
+} AS dishes
+"""
+
+# Like CREATE_QUERY: one query, re-checks everything against the database, and refuses (no row) when the order is
+# locked or no longer changeable. `$lock_until` is the last locked event date (today + LOCK_DAYS, Oslo time).
+CHANGE_QUERY = """
+MATCH (c:Customer {email: $email})-[:PLACED]->(o:Order {id: $order_id})-[:FOR_EVENT]->(e:EventType)
+WHERE o.status IN $changeable AND o.event_date > date($lock_until) AND $guests >= o.min_guests_at_order
+WITH c, o, e, COLLECT { MATCH (o)-[old:CONTAINS]->(f:FoodItem) RETURN {id: f.id, price: old.unit_price_nok} } AS old
+CALL (o, e, old) {
+    UNWIND $items AS item
+    MATCH (e)<-[:SUITS]-(f:FoodItem {id: item.dish_id})
+    WHERE (f.published OR any(p IN old WHERE p.id = f.id))
+      AND item.quantity >= CASE WHEN coalesce(f.min_order_qty, 0) > o.min_guests_at_order
+                                THEN f.min_order_qty ELSE o.min_guests_at_order END
+    WITH f, item, [p IN old WHERE p.id = f.id | p.price] AS kept
+    RETURN collect({food: f, quantity: item.quantity, price: coalesce(kept[0], f.price_nok)}) AS found
+}
+WITH c, o, found WHERE size(found) = size($items) AND size(found) > 0
+CALL (o) { MATCH (o)-[old:CONTAINS]->() DELETE old }
+CALL (o) { MATCH (o)-[:HAS_GROUP]->(g:GuestGroup) DETACH DELETE g }
+SET o.guests = $guests, o.delivery_notes = $delivery_notes, o.changed_at = datetime(),
+    o.total_nok = reduce(total = 0, x IN found | total + x.quantity * x.price)
+CREATE (o)-[:HAD_STATUS]->(:StatusChange {from_status: o.status, to_status: o.status, at: datetime(),
+                                          by_role: 'customer', by_id: c.email})
+WITH o, found
+CALL (o, found) {
+    UNWIND found AS x
+    WITH o, x.food AS f, x.quantity AS quantity, x.price AS price
+    CREATE (o)-[:CONTAINS {quantity: quantity, unit_price_nok: price}]->(f)
+}
+CALL (o) {
+    UNWIND $groups AS g
+    CREATE (o)-[:HAS_GROUP]->(group:GuestGroup {position: g.position, count: g.count})
+    WITH group, g
+    CALL (group, g) { MATCH (a:Allergen) WHERE a.code IN g.allergens CREATE (group)-[:HAS_ALLERGY]->(a) }
+    CALL (group, g) { MATCH (d:Diet) WHERE d.code IN g.diets CREATE (group)-[:NEEDS_DIET]->(d) }
+}
+RETURN o.id AS id, o.status AS status, o.total_nok AS total_nok
+"""
+
+CANCEL_QUERY = """
+MATCH (c:Customer {email: $email})-[:PLACED]->(o:Order {id: $order_id})
+WHERE o.status IN $changeable AND o.event_date > date($lock_until)
+WITH c, o, o.status AS from_status
+SET o.status = 'cancelled'
+CREATE (o)-[:HAD_STATUS]->(:StatusChange {from_status: from_status, to_status: 'cancelled', at: datetime(),
+                                          by_role: 'customer', by_id: c.email})
+RETURN o.id AS id, from_status
+"""
+
+# --- daily job (US-11, US-25) ---
+
+# Approved orders 7 days or less before the event that haven't had a reminder, and aren't locked yet: a job that
+# missed a day still sends it. Marked as sent in the same query, so running the job twice sends one e-mail.
+REMINDER_QUERY = """
+MATCH (c:Customer)-[:PLACED]->(o:Order {status: 'approved'})-[:FOR_EVENT]->(e:EventType)
+WHERE o.reminder_sent_at IS NULL AND date($lock_until) < o.event_date <= date($remind_until)
+  AND c.anonymised_at IS NULL
+SET o.reminder_sent_at = datetime()
+RETURN o {.id, .event_date, .guests} AS order, e {.id, .name_no, .name_en} AS event_type,
+       c {.email, .name, .language} AS customer
+ORDER BY o.event_date
+"""
+
+LOCK_QUERY = """
+MATCH (o:Order)-[:FOR_EVENT]->(e:EventType)
+WHERE o.status IN $changeable AND o.locked_at IS NULL AND o.event_date <= date($lock_until)
+SET o.locked_at = datetime()
+RETURN o {.id, .status, .event_date, .guests, event_type: e {.id, .name_no, .name_en}} AS order
+ORDER BY o.event_date
+"""
+
 # --- admin (US-21 – US-25) ---
 
 ADMIN_LIST_QUERY = """
@@ -201,3 +287,34 @@ def change_status(order_id: str, from_status: str, to_status: str, staff_email: 
 def change_payment(order_id: str, from_status: str, to_status: str, staff_email: str) -> bool:
     return bool(run(CHANGE_PAYMENT_QUERY, order_id=order_id, from_status=from_status, to_status=to_status,
                     staff_email=staff_email))
+
+
+def change_options(email: str, order_id: str) -> list[dict]:
+    rows = run(CHANGE_OPTIONS_QUERY, email=email, order_id=order_id)
+    return rows[0]["dishes"] if rows else []
+
+
+def change(email: str, order_id: str, change: dict, changeable: tuple[str, ...], lock_until) -> dict | None:
+    """Apply a customer's change (US-09). Returns {"id", "status", "total_nok"}, or None if it was refused."""
+    rows = run(CHANGE_QUERY, email=email, order_id=order_id, guests=change["guests"],
+               items=[{"dish_id": d, "quantity": q} for d, q in change["items"].items()],
+               delivery_notes=change["delivery_notes"], groups=change["groups"], changeable=list(changeable),
+               lock_until=lock_until.isoformat())
+    return rows[0] if rows else None
+
+
+def cancel(email: str, order_id: str, changeable: tuple[str, ...], lock_until) -> str | None:
+    """Cancel (US-10). Returns the status the order had, or None if it was refused."""
+    rows = run(CANCEL_QUERY, email=email, order_id=order_id, changeable=list(changeable),
+               lock_until=lock_until.isoformat())
+    return rows[0]["from_status"] if rows else None
+
+
+def take_reminders(remind_until, lock_until) -> list[dict]:
+    """Orders due a reminder, marked as reminded. Each row: {"order", "event_type", "customer"}."""
+    return run(REMINDER_QUERY, remind_until=remind_until.isoformat(), lock_until=lock_until.isoformat())
+
+
+def lock_due(changeable: tuple[str, ...], lock_until) -> list[dict]:
+    """Lock orders 5 days or less before the event. Returns the orders locked now."""
+    return [r["order"] for r in run(LOCK_QUERY, changeable=list(changeable), lock_until=lock_until.isoformat())]
