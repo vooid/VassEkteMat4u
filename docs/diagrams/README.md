@@ -32,12 +32,16 @@ Source requirements: [`../requirements/basic_desc.txt`](../requirements/basic_de
 
 Open questions for the product owner are listed at the bottom of `state_order.md`.
 
+## Data model
+
+[`data_model.md`](data_model.md) ([PNG](data_model.png)) is the Neo4j graph model drawn as a UML class diagram: node labels, properties, relationships, value lists, design choices, constraints and example queries. Built from the [user stories](../requirements/user_stories.md).
+
 ### Regenerating
 
 ```sh
 python3 docs/diagrams/src/make_flowcharts.py   # writes the SVGs
 sh docs/diagrams/src/make_png.sh               # SVG -> PNG with headless Google Chrome (macOS)
-sh docs/diagrams/src/make_state_png.sh         # Mermaid state diagrams -> PNG (needs internet)
+sh docs/diagrams/src/make_state_png.sh         # Mermaid diagrams (state, data model) -> PNG (needs internet)
 ```
 
 Edit the node and edge lists in `src/make_flowcharts.py` to change a diagram.

@@ -47,19 +47,11 @@ run.py               dev server
 
 To add a resource: put its Cypher in `repositories/<name>.py`, its endpoints in `routes/<name>.py`, register the blueprint in `app/__init__.py`, and add tests.
 
-## Graph model (first draft)
+## Graph model
 
-Only `:EventType` is implemented. The rest is the planned model, with constraints already created by the seed script:
-
-```
-(:Customer {email})-[:PLACED]->(:Order {id, status, payment_status, payment_option,
-                                        event_date, guests, min_guests_at_order, ...})
-(:Order)-[:FOR_EVENT]->(:EventType {id, name_no, name_en, min_guests})
-(:Order)-[:CONTAINS {quantity}]->(:FoodItem {id, name, price_nok, min_order_qty, ...})
-(:FoodItem)-[:SUITS]->(:EventType)
-```
-
-`min_guests_at_order` stores the minimum in force when the order was placed, so later changes to an event type's minimum don't invalidate existing orders (`docs/requirements/basic_desc.txt`).
+The full data model is in [`docs/diagrams/data_model.md`](../docs/diagrams/data_model.md). Only `:EventType` is
+implemented so far; the seed script already creates the uniqueness constraints for `EventType`, `FoodItem`, `Customer`
+and `Order`.
 
 ## Before production
 
