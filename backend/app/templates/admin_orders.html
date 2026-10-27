@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}{{ t("admin_orders") }} – Ekte Mat{% endblock %}
+{% block content %}
+<h1>{{ t("admin_orders") }}</h1>
+
+<form method="get" action="{{ url_for('admin.order_list') }}" class="panel filters">
+  <fieldset>
+    <legend>{{ t("status") }}</legend>
+    {% for s in all_statuses %}
+    <label class="choice"><input type="checkbox" name="status" value="{{ s }}" {% if s in statuses %}checked{% endif %}>
+      {{ t("status_" ~ s) }}</label>
+    {% endfor %}
+  </fieldset>
+  <div class="date-range">
+    <label>{{ t("from_date") }} <input type="date" name="from" value="{{ date_from.isoformat() if date_from else '' }}"></label>
+    <label>{{ t("to_date") }} <input type="date" name="to" value="{{ date_to.isoformat() if date_to else '' }}"></label>
+    <button type="submit">{{ t("filter") }}</button>
+    <a href="{{ url_for('admin.order_list') }}">{{ t("reset_filter") }}</a>
+  </div>
+</form>
+
+{% if rows %}
+<p class="hint">{{ t("orders_found", n=rows | length) }}</p>
+<div class="table-scroll">
+<table class="cart-table orders-table">
+  <thead>
+    <tr>
+      <th scope="col">{{ t("event_date") }}</th>
+      <th scope="col">{{ t("order") }}</th>
+      <th scope="col">{{ t("customer") }}</th>
+      <th scope="col">{{ t("event_type") }}</th>
+      <th scope="col" class="num">{{ t("guests") }}</th>
+      <th scope="col" class="num" title="{{ t('booked_that_day_hint') }}">{{ t("booked_that_day") }}</th>
+      <th scope="col">{{ t("status") }}</th>
+      <th scope="col">{{ t("payment") }}</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for o in rows %}
+    <tr>
+      <td>{{ format_date(o.event_date) }}</td>
+      <td><a href="{{ url_for('admin.order_detail', order_id=o.id) }}">{{ o.id }}</a></td>
+      <td>{{ o.customer.name }}<div class="hint">{{ o.customer.email }}</div></td>
+      <td>{{ tr(o.event_type, "name") }}</td>
+      <td class="num">{{ o.guests }}</td>
+      <td class="num">{{ o.booked_that_day }}</td>
+      <td><span class="status status-{{ o.status }}">{{ t("status_" ~ o.status) }}</span></td>
+      <td>{{ t("payment_" ~ o.payment_status) }}<div class="hint">{{ t("option_" ~ o.payment_option) }}</div></td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}
+<p class="empty">{{ t("no_matching_orders") }}</p>
+{% endif %}
+{% endblock %}

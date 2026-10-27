@@ -128,6 +128,7 @@ input[type=number] { font: inherit; width: 6em; padding: 5px 8px; border: 1px so
 .account-nav a, .account-nav .who { color: #fff; text-decoration: none; }
 .account-nav .who { opacity: .85; }
 .account-nav form { margin: 0; }
+.header-nav a, .account-nav a, .account-nav .who, .header-button { white-space: nowrap; }
 .header-button { background: transparent; border: none; color: #fff; padding: 0; text-decoration: underline; }
 
 /* Forms */
@@ -172,6 +173,18 @@ p.total { font-weight: 700; color: var(--green); }
 .pre { white-space: pre-line; }
 .mail-body { white-space: pre-wrap; font: inherit; margin: 0; }
 .orders-table a { white-space: nowrap; }
+
+/* Admin */
+.filters fieldset { border: none; padding: 0; margin: 0 0 10px; display: flex; flex-wrap: wrap; gap: 4px 0; }
+.filters legend { font-weight: 600; margin-bottom: 4px; }
+.date-range { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; }
+.date-range input, .reject-form textarea { font: inherit; padding: 5px 8px; border: 1px solid var(--border); border-radius: 8px; background: #fff; }
+.table-scroll { overflow-x: auto; }
+.inline-form { display: inline-flex; align-items: center; gap: 8px; margin: 4px 8px 4px 0; }
+.reject-form { max-width: 480px; margin: 12px 0; }
+.payment-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+button.danger { background: var(--danger); border-color: var(--danger); }
+button.secondary { background: #fff; color: var(--green); }
 
 @media (max-width: 600px) {
   .facts { grid-template-columns: 1fr; }

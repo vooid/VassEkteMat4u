@@ -1,4 +1,4 @@
-"""Cypher queries for :Order nodes (US-06, US-07, US-08)."""
+"""Cypher queries for :Order nodes (US-06 – US-08 for customers, US-21 – US-25 for the admin)."""
 import secrets
 
 from neo4j.exceptions import ConstraintError
@@ -55,15 +55,13 @@ RETURN o {.id, .status, .payment_status, .event_date, .guests, .total_nok,
 ORDER BY o.event_date, o.created_at
 """
 
-# Only the customer's own orders: the e-mail is part of the match, so another customer's order id gives no row.
-DETAIL_QUERY = """
-MATCH (:Customer {email: $email})-[:PLACED]->(o:Order {id: $order_id})-[:FOR_EVENT]->(e:EventType)
-RETURN o {.*,
+ORDER_PROJECTION = """
+o {.*,
     event_type: e {.id, .name_no, .name_en},
     lines: COLLECT {
-        MATCH (o)-[c:CONTAINS]->(f:FoodItem)
-        RETURN {id: f.id, name_no: f.name_no, name_en: f.name_en, quantity: c.quantity,
-                unit_price_nok: c.unit_price_nok, line_total: c.quantity * c.unit_price_nok}
+        MATCH (o)-[line:CONTAINS]->(f:FoodItem)
+        RETURN {id: f.id, name_no: f.name_no, name_en: f.name_en, quantity: line.quantity,
+                unit_price_nok: line.unit_price_nok, line_total: line.quantity * line.unit_price_nok}
         ORDER BY f.name_no
     },
     groups: COLLECT {
@@ -75,11 +73,65 @@ RETURN o {.*,
     },
     history: COLLECT {
         MATCH (o)-[:HAD_STATUS]->(s:StatusChange)
-        RETURN s {.from_status, .to_status, .at, .by_role}
+        RETURN s {.from_status, .to_status, .at, .by_role, .by_id, .reason}
         ORDER BY s.at
     }
-} AS order
+}
 """
+
+# Only the customer's own orders: the e-mail is part of the match, so another customer's order id gives no row.
+DETAIL_QUERY = """
+MATCH (:Customer {email: $email})-[:PLACED]->(o:Order {id: $order_id})-[:FOR_EVENT]->(e:EventType)
+RETURN """ + ORDER_PROJECTION + " AS order"
+
+# --- admin (US-21 – US-25) ---
+
+ADMIN_LIST_QUERY = """
+MATCH (c:Customer)-[:PLACED]->(o:Order)-[:FOR_EVENT]->(e:EventType)
+WHERE o.status IN $statuses
+  AND ($date_from IS NULL OR o.event_date >= date($date_from))
+  AND ($date_to IS NULL OR o.event_date <= date($date_to))
+CALL (o) {
+    OPTIONAL MATCH (x:Order {event_date: o.event_date}) WHERE x.status IN $booked_statuses
+    RETURN coalesce(sum(x.guests), 0) AS booked
+}
+RETURN o {.id, .status, .payment_status, .payment_option, .event_date, .guests, .total_nok,
+          event_type: e {.id, .name_no, .name_en}, customer: c {.name, .email}, booked_that_day: booked} AS order
+ORDER BY o.event_date, o.created_at
+LIMIT 500
+"""
+
+ADMIN_DETAIL_QUERY = """
+MATCH (c:Customer)-[:PLACED]->(o:Order {id: $order_id})-[:FOR_EVENT]->(e:EventType)
+RETURN """ + ORDER_PROJECTION + """ AS order, c {.email, .name, .phone, .language} AS customer
+"""
+
+# Other approved / in-preparation orders on the same day, for the capacity check (US-23).
+CAPACITY_QUERY = """
+OPTIONAL MATCH (x:Order {event_date: date($day)})-[:FOR_EVENT]->(e:EventType)
+WHERE x.status IN $booked_statuses AND x.id <> $exclude_id
+RETURN coalesce(sum(x.guests), 0) AS guests, count(CASE WHEN e.id = $wedding THEN 1 END) > 0 AS wedding
+"""
+
+# The WHERE on the current status makes the change safe if two admins click at the same time: the second gets no row.
+CHANGE_STATUS_QUERY = """
+MATCH (o:Order {id: $order_id}) WHERE o.status = $from_status
+MATCH (s:Staff {email: $staff_email})
+SET o.status = $to_status
+CREATE (o)-[:HAD_STATUS]->(:StatusChange {from_status: $from_status, to_status: $to_status, at: datetime(),
+                                          by_role: s.role, by_id: s.email, reason: $reason})
+FOREACH (_ IN CASE WHEN $to_status = 'delivered' THEN [1] ELSE [] END |
+    CREATE (s)-[:DELIVERED {at: datetime()}]->(o))
+RETURN o.id AS id
+"""
+
+CHANGE_PAYMENT_QUERY = """
+MATCH (o:Order {id: $order_id}) WHERE o.payment_status = $from_status
+SET o.payment_status = $to_status, o.payment_changed_at = datetime(), o.payment_changed_by = $staff_email
+RETURN o.id AS id
+"""
+
+
 
 
 def options() -> tuple[list[dict], list[dict]]:
@@ -118,3 +170,34 @@ def list_for_customer(email: str) -> list[dict]:
 def get_for_customer(email: str, order_id: str) -> dict | None:
     rows = run(DETAIL_QUERY, email=email, order_id=order_id)
     return rows[0]["order"] if rows else None
+
+
+def admin_list(statuses: list[str], date_from: str | None, date_to: str | None,
+               booked_statuses: tuple[str, ...]) -> list[dict]:
+    rows = run(ADMIN_LIST_QUERY, statuses=statuses, date_from=date_from, date_to=date_to,
+               booked_statuses=list(booked_statuses))
+    return [r["order"] for r in rows]
+
+
+def admin_get(order_id: str) -> tuple[dict | None, dict | None]:
+    """(order, customer) for any order, or (None, None)."""
+    rows = run(ADMIN_DETAIL_QUERY, order_id=order_id)
+    return (rows[0]["order"], rows[0]["customer"]) if rows else (None, None)
+
+
+def booked_on(day, exclude_id: str, booked_statuses: tuple[str, ...], wedding: str) -> tuple[int, bool]:
+    """Guests in other booked orders that day, and whether one of them is a wedding."""
+    # str() of a date or a neo4j Date is YYYY-MM-DD.
+    rows = run(CAPACITY_QUERY, day=str(day), exclude_id=exclude_id, booked_statuses=list(booked_statuses),
+               wedding=wedding)
+    return (rows[0]["guests"], rows[0]["wedding"]) if rows else (0, False)
+
+
+def change_status(order_id: str, from_status: str, to_status: str, staff_email: str, reason: str | None) -> bool:
+    return bool(run(CHANGE_STATUS_QUERY, order_id=order_id, from_status=from_status, to_status=to_status,
+                    staff_email=staff_email, reason=reason or None))
+
+
+def change_payment(order_id: str, from_status: str, to_status: str, staff_email: str) -> bool:
+    return bool(run(CHANGE_PAYMENT_QUERY, order_id=order_id, from_status=from_status, to_status=to_status,
+                    staff_email=staff_email))

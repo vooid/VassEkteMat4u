@@ -59,6 +59,30 @@ def login():
         (401 if failed else 200)
 
 
+@bp.route("/staff/login", methods=["GET", "POST"])
+def staff_login():
+    """Login for Ekte Mat staff (admin, kitchen, driver). Accounts are made with `flask create-staff`."""
+    if current_user.is_authenticated and current_user.is_staff:
+        return redirect(url_for("admin.order_list"))
+    email = ""
+    failed = False
+    if request.method == "POST":
+        email = auth.normalise_email(request.form.get("email"))
+        member = auth.authenticate_staff(email, request.form.get("password", ""))
+        if member:
+            # A customer session in the same browser is replaced, cart included.
+            lang = session.get("lang")
+            session.clear()
+            if lang:
+                session["lang"] = lang
+            login_user(member)
+            flash(t("logged_in", name=member.name), "success")
+            return redirect(safe_next(request.args.get("next"), "admin.order_list"))
+        failed = True
+    return render_template("staff_login.html", email=email, failed=failed, next=request.args.get("next", "")), \
+        (401 if failed else 200)
+
+
 @bp.post("/logout")
 @login_required
 def logout():

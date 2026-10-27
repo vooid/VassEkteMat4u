@@ -73,6 +73,7 @@ CONSTRAINTS = [
     "CREATE CONSTRAINT event_type_id IF NOT EXISTS FOR (e:EventType) REQUIRE e.id IS UNIQUE",
     "CREATE CONSTRAINT food_item_id IF NOT EXISTS FOR (f:FoodItem) REQUIRE f.id IS UNIQUE",
     "CREATE CONSTRAINT customer_email IF NOT EXISTS FOR (c:Customer) REQUIRE c.email IS UNIQUE",
+    "CREATE CONSTRAINT staff_email IF NOT EXISTS FOR (s:Staff) REQUIRE s.email IS UNIQUE",
     "CREATE CONSTRAINT order_id IF NOT EXISTS FOR (o:Order) REQUIRE o.id IS UNIQUE",
     "CREATE CONSTRAINT allergen_code IF NOT EXISTS FOR (a:Allergen) REQUIRE a.code IS UNIQUE",
     "CREATE CONSTRAINT diet_code IF NOT EXISTS FOR (d:Diet) REQUIRE d.code IS UNIQUE",

@@ -7,7 +7,7 @@ each association is a **relationship type**. GitHub renders the Mermaid diagram 
 Built from the [user stories](../requirements/user_stories.md), the [state diagrams](state_order.md) and the
 [decisions log](../decisions.md) (2026-10-27: basic login, NO/EN interface, no deposits, corporate accounts, kitchen and
 driver screens). Storage is Neo4j (`CLAUDE.md`). Implemented in the backend so far: `:EventType`, `:FoodItem`,
-`:Allergen`, `:Diet`, `:Customer`, `:Order`, `:GuestGroup` and `:StatusChange`.
+`:Allergen`, `:Diet`, `:Customer`, `:Staff`, `:Order`, `:GuestGroup` and `:StatusChange`.
 
 ```mermaid
 classDiagram
@@ -77,6 +77,8 @@ classDiagram
         DateTime created_at
         DateTime reminder_sent_at
         DateTime locked_at
+        DateTime payment_changed_at
+        String payment_changed_by
     }
     class GuestGroup {
         int position
@@ -88,6 +90,7 @@ classDiagram
         DateTime at
         String by_role
         String by_id
+        String reason
     }
     class Question {
         String id
@@ -105,6 +108,7 @@ classDiagram
         String password_hash
         String pin_hash
         String role
+        DateTime created_at
     }
 
     FoodItem "*" --> "1..*" EventType : SUITS
@@ -178,15 +182,15 @@ CREATE CONSTRAINT food_item_id    IF NOT EXISTS FOR (f:FoodItem)  REQUIRE f.id I
 CREATE CONSTRAINT customer_email  IF NOT EXISTS FOR (c:Customer)  REQUIRE c.email IS UNIQUE; // exists
 CREATE CONSTRAINT order_id        IF NOT EXISTS FOR (o:Order)     REQUIRE o.id IS UNIQUE;   // exists
 CREATE CONSTRAINT company_id      IF NOT EXISTS FOR (c:Company)   REQUIRE c.id IS UNIQUE;
-CREATE CONSTRAINT staff_email     IF NOT EXISTS FOR (s:Staff)     REQUIRE s.email IS UNIQUE;
-CREATE CONSTRAINT allergen_code   IF NOT EXISTS FOR (a:Allergen)  REQUIRE a.code IS UNIQUE;
-CREATE CONSTRAINT diet_code       IF NOT EXISTS FOR (d:Diet)      REQUIRE d.code IS UNIQUE;
-CREATE CONSTRAINT image_id        IF NOT EXISTS FOR (i:Image)     REQUIRE i.id IS UNIQUE;
+CREATE CONSTRAINT staff_email     IF NOT EXISTS FOR (s:Staff)     REQUIRE s.email IS UNIQUE;   // exists
+CREATE CONSTRAINT allergen_code   IF NOT EXISTS FOR (a:Allergen)  REQUIRE a.code IS UNIQUE;   // exists
+CREATE CONSTRAINT diet_code       IF NOT EXISTS FOR (d:Diet)      REQUIRE d.code IS UNIQUE;   // exists
+CREATE CONSTRAINT image_id        IF NOT EXISTS FOR (i:Image)     REQUIRE i.id IS UNIQUE;   // exists
 CREATE CONSTRAINT question_id     IF NOT EXISTS FOR (q:Question)  REQUIRE q.id IS UNIQUE;
 CREATE INDEX order_status_date    IF NOT EXISTS FOR (o:Order) ON (o.status, o.event_date);  // admin list (US-21), kitchen/driver day view
 ```
 
-The first four already exist in `backend/scripts/seed.py`; the rest should be added when those features are built.
+The ones marked `exists` are created by `backend/scripts/seed.py`; add the rest when those features are built.
 
 ## Example queries
 

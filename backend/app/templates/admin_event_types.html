@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}{{ t("event_types") }} – Ekte Mat{% endblock %}
+{% block content %}
+<h1>{{ t("event_types") }}</h1>
+<p class="hint">{{ t("event_types_intro", max=max_minimum) }}</p>
+<table class="cart-table">
+  <thead>
+    <tr>
+      <th scope="col">{{ t("event_type") }}</th>
+      <th scope="col">{{ t("minimum_guests") }}</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for e in event_types %}
+    <tr>
+      <td>{{ tr(e, "name") }}</td>
+      <td>
+        <form method="post" action="{{ url_for('admin.set_minimum', event_type_id=e.id) }}" class="inline-form">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <label class="visually-hidden" for="min-{{ e.id }}">{{ t("minimum_guests") }}: {{ tr(e, "name") }}</label>
+          <input id="min-{{ e.id }}" name="min_guests" type="number" inputmode="numeric" min="1"
+                 max="{{ max_minimum }}" value="{{ e.min_guests }}" required>
+          <button type="submit" class="secondary">{{ t("save") }}</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

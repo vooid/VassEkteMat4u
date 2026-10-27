@@ -1,4 +1,4 @@
-"""Order rules (US-07, US-08): checkout validation and status groups.
+"""Order rules (US-07, US-08, US-21 – US-25): checkout validation, status groups, admin transitions and capacity.
 
 Pure functions, like cart.py, so they're easy to test. The minimum-order rules are in cart.py and are checked again
 in the Cypher that creates the order (repositories/orders.py).
@@ -17,6 +17,23 @@ GUEST_GROUP_ROWS = 5  # rows on the checkout form
 PAYMENT_OPTIONS = ("invoice", "vipps", "bank_transfer")
 CURRENT_STATUSES = ("awaiting_company_approval", "submitted", "approved", "in_preparation")
 PAST_STATUSES = ("delivered", "cancelled", "rejected")  # final and read-only (state_order.md)
+ALL_STATUSES = CURRENT_STATUSES + PAST_STATUSES
+PAYMENT_STATUSES = ("not_paid", "invoiced", "paid")
+
+# What the Ekte Mat admin may do, from the allowed-transitions table in docs/diagrams/state_order.md.
+# Company approval and customer changes/cancellations are not admin transitions.
+ADMIN_TRANSITIONS = {
+    "submitted": ("approved", "rejected"),
+    "approved": ("in_preparation",),  # only when locked, see admin_actions()
+    "in_preparation": ("delivered",),
+}
+PAYMENT_TRANSITIONS = {"not_paid": ("invoiced", "paid"), "invoiced": ("paid",)}  # payment state diagram
+
+# Covers per day (Sunniva interview): 400, or 250 when a served wedding dinner is booked that day.
+CAPACITY = 400
+CAPACITY_WEDDING_DAY = 250
+WEDDING = "wedding"
+BOOKED_STATUSES = ("approved", "in_preparation")  # count against capacity
 
 
 def today() -> date:
@@ -29,6 +46,16 @@ def earliest_event_date(on: date | None = None) -> date:
 
 def latest_event_date(on: date | None = None) -> date:
     return (on or today()) + timedelta(days=MAX_DAYS_AHEAD)
+
+
+def _native(value):
+    """neo4j.time.Date -> datetime.date."""
+    return value.to_native() if hasattr(value, "to_native") else value
+
+
+def is_locked(event_date, on: date | None = None) -> bool:
+    """5 days or less before the event: no more customer changes, and the admin can release it to the kitchen."""
+    return (_native(event_date) - (on or today())).days <= LOCK_DAYS
 
 
 def parse_date(value) -> date | None:
@@ -100,3 +127,38 @@ def split_current_past(orders: list[dict]) -> tuple[list[dict], list[dict]]:
     current = [o for o in orders if o["status"] in CURRENT_STATUSES]
     past = [o for o in orders if o["status"] not in CURRENT_STATUSES]
     return current, past[::-1]
+
+
+def admin_actions(order: dict, on: date | None = None) -> tuple[str, ...]:
+    """Statuses the admin can move this order to now."""
+    allowed = ADMIN_TRANSITIONS.get(order["status"], ())
+    if "in_preparation" in allowed and not is_locked(order["event_date"], on):
+        allowed = tuple(s for s in allowed if s != "in_preparation")
+    return allowed
+
+
+def payment_actions(order: dict) -> tuple[str, ...]:
+    """Payment statuses the admin can set now. Not on rejected or cancelled orders: nothing is owed."""
+    if order["status"] in ("rejected", "cancelled"):
+        return ()
+    return PAYMENT_TRANSITIONS.get(order["payment_status"], ())
+
+
+def status_change_error(order: dict, to_status: str, reason: str, on: date | None = None) -> str | None:
+    """i18n key of why the admin can't make this change, or None."""
+    if to_status not in admin_actions(order, on):
+        return "change_not_allowed"
+    if to_status == "rejected" and not reason:
+        return "reason_required"
+    if len(reason) > MAX_TEXT_LENGTH:
+        return "reason_too_long"
+    return None
+
+
+def capacity(booked_guests: int, wedding_booked: bool, order: dict) -> dict:
+    """Guests that day if this order counts too, against the day's limit (US-23). `booked_guests` and
+    `wedding_booked` are for the other approved / in-preparation orders that day."""
+    is_wedding = order["event_type"]["id"] == WEDDING
+    limit = CAPACITY_WEDDING_DAY if wedding_booked or is_wedding else CAPACITY
+    total = booked_guests + order["guests"]
+    return {"booked": booked_guests, "total": total, "limit": limit, "over": total > limit}
