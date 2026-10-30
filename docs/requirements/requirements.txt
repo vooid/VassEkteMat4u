@@ -1,0 +1,136 @@
+EKTE MAT ORDERING SYSTEM - REQUIREMENTS REPORT
+Status as of 2026-10-27 (main at f628a14)
+
+Detailed stories with acceptance criteria: user_stories.md
+Team's original description:              basic_desc.txt
+Decisions referred to below:              ../decisions.md
+
+
+1. SOURCES
+----------
+- basic_desc.txt: the team's functional requirements (admin side and customer side).
+- Stakeholder interviews (docs/context/01_stakeholder_interviews):
+    Ingrid (owner), Sunniva (event coordinator), Mateo (head chef), Fjordtek (corporate customer).
+- As-is process and IT landscape (docs/context/02_as_is_process_and_IT).
+- Vision, budget, constraints and GDPR note (docs/context/04_vision_scope_constraints).
+- Decisions log, 2026-10-27 (docs/decisions.md).
+- CLAUDE.md: Flask backend, Neo4j storage, never publish the Claude API key.
+
+
+2. CONSTRAINTS (non-functional)
+-------------------------------
+C1  Backend in Flask, data in Neo4j (CLAUDE.md). Server-rendered Flask templates (decision 2026-10-27).
+C2  Norwegian and English interface (decision 2026-10-27).
+C3  Go-live 1 March 2027 (hard); wedding season from May 2027.
+C4  Budget 450 000 NOK incl. 12 months hosting; running cost under 3 000 NOK/month.
+C5  Data stored in the EU/EEA; data processing agreement with any cloud/SaaS provider (GDPR note).
+C6  Allergies and diets stored per guest group, never per named guest (GDPR art. 9).
+C7  Order data kept 5 years for bookkeeping; other personal data shorter.
+C8  Customers can request access to and deletion of their data.
+C9  Fast pages (Mateo: the old plugin took 10 seconds).
+C10 Passwords stored hashed; the Claude API key is never published.
+
+
+3. FUNCTIONAL REQUIREMENTS FROM basic_desc.txt
+----------------------------------------------
+Admin side
+  A1 Food items: add/edit name, description, price (NOK), minimum order quantity,
+     event categories, diet implications ............................ US-18
+  A2 Event types: list them, change each one's lower limit ........... US-20
+  A3 Images: upload one or more per dish, review before publishing ... US-19
+  A4 Orders: list filtered by status and event date; one page per
+     order; order status and payment status .......................... US-21 - US-25
+  A5 Orders valid against the limit in force when placed ............. US-06
+  A6 Reminder 7 days before the event, before the 5-day limit ......... US-11
+  A7 Read and answer customers' questions ............................ US-26
+
+Customer side
+  B1 Menu cards grouped by event type, with image, price, minimum,
+     allergens and diets; minimum from the event type's current limit  US-01
+  B2 Cart: add, change, total; orders below the minimum rejected ..... US-05, US-06
+  B3 Login based on a unique e-mail; password reset .................. US-04 (reset deferred)
+  B4 Submit order: event date, guests, address, allergies, diets,
+     delivery notes, payment option .................................. US-07
+  B5 Current and past orders visible; past orders read-only .......... US-08
+  B6 Cancel until 5 days before the event ............................ US-10
+  B7 Ask a question about an order ................................... US-12
+
+Model prompt: event-type minimums are arbitrary placeholders, at most 265 guests.
+
+
+4. USER STORIES AND STATUS
+--------------------------
+Priority: M = must, S = should, C = could.
+Status:   Done = merged to main; Partly = some criteria missing; Not started.
+
+ID     Story                                   Prio  Status       Notes
+-----  --------------------------------------  ----  -----------  ------------------------------------------
+E1 Menus
+US-01  Browse menus by event type              M     Partly       Images wait for US-19
+US-02  Choose language (NO/EN)                 M     Done
+US-03  Filter by diet and allergens            C     Not started
+
+E2 Account and ordering
+US-04  Register and log in                     M     Done         No password reset (decision 2026-10-27)
+US-05  Shopping cart                           M     Done
+US-06  Minimum order check                     M     Done         See open question Q1
+US-07  Submit an order                         M     Done         Company approval part waits for US-14
+US-08  See my orders                           M     Done
+US-09  Change an order                         M     Done
+US-10  Cancel an order                         M     Done         See open question Q2
+US-11  Reminder 7 days before                  M     Done         E-mails go to the dev outbox (Q5)
+US-12  Ask a question about an order           S     Done
+
+E3 Corporate accounts
+US-13  Company account                         M     Not started
+US-14  Approval above the limit                M     Not started
+US-15  Approve or decline                      M     Not started
+US-16  Cost-centre code and monthly invoice    S     Not started
+US-17  Copy last order                         C     Not started
+
+E4 Admin: catalogue
+US-18  Manage food items                       M     Not started  Dishes and recipes come from the seed script
+US-19  Upload and review images                M     Not started
+US-20  Manage event types and minimums         M     Done
+
+E5 Admin: orders
+US-21  Order list                              M     Done
+US-22  Approve or reject an order              M     Done
+US-23  Capacity per day                        S     Done
+US-24  Payment status                          M     Done
+US-25  Release to kitchen                      M     Done
+US-26  Answer questions                        M     Done
+
+E6 Kitchen
+US-27  Kitchen screen (PIN login)              M     Done
+US-28  Confirm allergies seen                  M     Done
+US-29  Prep list and offline view              C     Done         Sample recipes (Q4)
+
+E7 Delivery
+US-30  Driver screen                           M     Done
+
+E8 Privacy
+US-31  Access and deletion                     S     Not started
+
+Summary: 31 stories. 21 done, 1 partly done, 9 not started.
+Must-haves not done: US-13, US-14, US-15, US-18, US-19 (and the image part of US-01).
+
+
+5. DEVIATIONS FROM basic_desc.txt
+---------------------------------
+- Password reset is not built (needs an e-mail service; decision 2026-10-27).
+- Deposits are out of scope; the "deposit paid" payment status is reserved for later (decision 2026-10-27).
+- Added beyond basic_desc.txt: corporate accounts, kitchen and driver screens, event time,
+  PIN login on approved devices (decisions 2026-10-27).
+
+
+6. OPEN QUESTIONS
+-----------------
+Q1 Minimum portions per dish: the system currently requires each dish to reach the larger of the
+   event type's minimum and the dish's own minimum (e.g. every dish at least 20 for a Christmas party).
+   US-06 only asks for guests >= event minimum and each dish >= its own minimum. To be decided.
+Q2 May a submitted (not yet approved) order be cancelled? Assumed yes (state_order.md).
+Q3 Placeholder values to confirm with Ingrid: event-type minimums, event times 06:00-23:00,
+   earliest event date (more than 5 days ahead).
+Q4 Recipes and amounts per portion for the prep list are sample data; Mateo must supply real ones.
+Q5 No real e-mail service yet; every e-mail goes to the development outbox.

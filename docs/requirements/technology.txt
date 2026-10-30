@@ -1,0 +1,89 @@
+EKTE MAT ORDERING SYSTEM - TECHNOLOGY
+Status as of 2026-10-27
+
+Installable Python packages: backend/requirements.txt  (pip install -r requirements.txt)
+Local database:              docker-compose.yml
+Setup and running:           backend/README.md
+
+
+1. REQUIRED BY THE PROJECT
+--------------------------
+- Flask for the backend (CLAUDE.md)
+- Neo4j for data storage (CLAUDE.md)
+- Server-rendered Flask templates, no separate JavaScript app (decision 2026-10-27)
+
+
+2. RUNTIME
+----------
+Technology          Version        Used for
+------------------  -------------  -------------------------------------------------------------
+Python              3.13 (3.11+)   Language for the backend, scripts and tests
+Neo4j               5.26 Community Graph database; all data (orders, menus, customers, staff, ...)
+Cypher              (Neo4j 5)      Query language; queries live in backend/app/repositories/
+Docker / Compose    any recent     Runs Neo4j locally (image neo4j:5.26-community)
+
+
+3. PYTHON PACKAGES (backend/requirements.txt)
+---------------------------------------------
+Package             Version   Used for
+------------------  --------  -----------------------------------------------------------------
+flask               3.1.1     Web framework: app factory, blueprints, routes, sessions, CLI
+neo4j               5.28.1    Official Neo4j driver (Bolt protocol)
+flask-login         0.6.3     Logged-in customers and staff, @login_required
+flask-wtf           1.2.2     CSRF protection on every form
+python-dotenv       1.1.0     Reads settings and secrets from backend/.env (never committed)
+pytest              8.3.5     Tests (unit tests with a fake driver; opt-in integration tests)
+
+Installed with them (not listed in requirements.txt, pinned by the packages above):
+Werkzeug 3.1.9 (password and PIN hashing, dev server), Jinja2 3.1.6 (HTML templates),
+click 8.5.0 (command-line commands), itsdangerous 2.2.0 (signed session cookie), WTForms 3.3.1.
+
+
+4. PYTHON STANDARD LIBRARY (no install needed)
+----------------------------------------------
+zoneinfo     Norwegian time (Europe/Oslo) for dates, the 5-day lock and the 7-day reminder
+hashlib      SHA-256 of the device token for PIN login
+secrets      Random tokens (approved devices, order numbers)
+datetime     Event dates and times
+
+
+5. FRONTEND (in the browser)
+----------------------------
+- HTML from Jinja2 templates (backend/app/templates/), one stylesheet (backend/app/static/style.css).
+- No JavaScript framework and no external scripts or fonts at runtime.
+- Small inline JavaScript only on the kitchen pages, plus a service worker
+  (backend/app/static/kitchen-sw.js) that keeps the kitchen screen readable offline (US-29).
+- Map links open Google Maps in the driver's own app; nothing is loaded from Google by the site.
+
+
+6. FLASK COMMAND-LINE COMMANDS (backend/app/cli.py, backend/scripts/)
+---------------------------------------------------------------------
+flask create-staff     Create an admin, kitchen or driver account
+flask set-pin          Set a kitchen or driver PIN
+flask run-daily-jobs   7-day reminder and 5-day lock (run once a day, e.g. with cron)
+python -m scripts.seed Constraints, event types, allergens, diets, sample dishes and recipes
+
+
+7. SECURITY MEASURES BUILT ON THE ABOVE
+---------------------------------------
+- Passwords and PINs hashed with Werkzeug (never stored in plain text).
+- CSRF tokens on all forms (Flask-WTF).
+- Session cookie: HttpOnly, SameSite=Lax, Secure when served over HTTPS.
+- PIN login only on admin-approved devices; only the SHA-256 hash of the device token is stored.
+- Secrets in backend/.env, which git ignores. The Claude API key is never published (CLAUDE.md).
+
+
+8. DOCUMENTATION TOOLS (not part of the running system)
+-------------------------------------------------------
+Mermaid 11.4.1       State diagrams and the data model (docs/diagrams/*.md), loaded from cdn.jsdelivr.net
+Google Chrome        Headless rendering of diagrams to PNG (docs/diagrams/src/*.sh, macOS path)
+Python script        Swimlane flowcharts as SVG (docs/diagrams/src/make_flowcharts.py)
+GitHub               Repository, pull requests (github.com/vooid/VassEkteMat4u); no CI set up
+
+
+9. NOT CHOSEN YET
+-----------------
+- E-mail service: e-mails are stored in a development outbox (:OutboxMessage) for now.
+- Hosting: must be in the EU/EEA and under 3 000 NOK/month; check e.g. Neo4j AuraDB region and price.
+- Production web server (the built-in Flask server is for development only), e.g. gunicorn behind HTTPS.
+- Payment provider: not required in this version; the payment option is only a field on the order.
